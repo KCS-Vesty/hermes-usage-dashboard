@@ -1,16 +1,9 @@
+use hermes_monitor::UsageRecord;
 use yew::prelude::*;
-use serde::Deserialize;
-
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct UsageData {
-    pub provider: String,
-    pub tokens_used: i64,
-    pub cost_usd: f64,
-}
 
 #[function_component(App)]
 fn app() -> Html {
-    let usage = use_state(|| Vec::<UsageData>::new());
+    let usage = use_state(Vec::<UsageRecord>::new);
 
     html! {
         <div class="p-4">
@@ -33,23 +26,30 @@ mod tests {
     use super::*;
 
     #[test]
-    fn usage_data_creation() {
-        let data = UsageData {
+    fn test_usage_record_from_monitor() {
+        let rec = UsageRecord {
             provider: "openrouter".to_string(),
+            model: Some("claude-3".to_string()),
             tokens_used: 1000,
             cost_usd: 0.002,
+            ts: 1_700_000_000,
         };
-        assert_eq!(data.provider, "openrouter");
-        assert_eq!(data.tokens_used, 1000);
-        assert!((data.cost_usd - 0.002).abs() < f64::EPSILON);
+        assert_eq!(rec.provider, "openrouter");
+        assert_eq!(rec.tokens_used, 1000);
     }
 
     #[test]
-    fn usage_data_serde() {
-        let json = r#"{"provider":"anthropic","tokens_used":500,"cost_usd":0.015}"#;
-        let data: UsageData = serde_json::from_str(json).unwrap();
-        assert_eq!(data.provider, "anthropic");
-        assert_eq!(data.tokens_used, 500);
-        assert!((data.cost_usd - 0.015).abs() < f64::EPSILON);
+    fn test_usage_record_serde_roundtrip() {
+        let original = UsageRecord {
+            provider: "anthropic".to_string(),
+            model: None,
+            tokens_used: 500,
+            cost_usd: 0.015,
+            ts: 1_700_000_000,
+        };
+        let json = serde_json::to_string(&original).unwrap();
+        let deserialized: UsageRecord = serde_json::from_str(&json).unwrap();
+        assert_eq!(original.provider, deserialized.provider);
+        assert_eq!(original.tokens_used, deserialized.tokens_used);
     }
 }

@@ -1,22 +1,8 @@
-use crate::usage::{UsageRecord, RateLimitRecord};
-use once_cell::sync::Lazy;
-use std::collections::VecDeque;
-use std::sync::Arc;
-use tokio::sync::Mutex;
+pub mod storage;
 
-pub static USAGE_QUEUE: Lazy<Arc<Mutex<VecDeque<UsageRecord>>>> =
-    Lazy::new(|| Arc::new(Mutex::new(VecDeque::with_capacity(1024))));
-pub static RATE_QUEUE: Lazy<Arc<Mutex<VecDeque<RateLimitRecord>>>> =
-    Lazy::new(|| Arc::new(Mutex::new(VecDeque::with_capacity(1024))));
+// Re-export the legacy global-queue API so existing callers (db.rs, tests) keep working.
+// These are thin wrappers around the new Storage trait.
+pub use storage::legacy::{drain_rate, drain_usage, record_rate, record_usage};
 
-pub async fn record_usage(rec: UsageRecord) {
-    let mut q = USAGE_QUEUE.lock().await;
-    if q.len() == q.capacity() { q.pop_front(); }
-    q.push_back(rec);
-}
-
-pub async fn record_rate(rec: RateLimitRecord) {
-    let mut q = RATE_QUEUE.lock().await;
-    if q.len() == q.capacity() { q.pop_front(); }
-    q.push_back(rec);
-}
+#[cfg(test)]
+mod storage_tests;
