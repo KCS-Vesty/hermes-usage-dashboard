@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "monitor",
+    "tauri-backend",
+    "ui",
+]
