@@ -1,0 +1,9 @@
+{
+  "identifier": "default",
+  "description": "Default permissions for Hermes Usage Dashboard",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "notification:default"
+  ]
+}

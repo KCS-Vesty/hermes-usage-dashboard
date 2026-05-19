@@ -3,9 +3,14 @@ use influxdb2::Client;
 use tokio::time::{sleep, Duration};
 
 pub async fn start_writer() {
-    let client = Client::new("http://127.0.0.1:8086", "hermes-token")
-        .with_org("hermes")
-        .with_bucket("hermes_usage");
+    let client = Client::new(
+        "http://127.0.0.1:8086",
+        "hermes",
+        "hermes-token",
+    );
+    let bucket = "hermes_usage";
+    let org = "hermes";
+
     loop {
         sleep(Duration::from_secs(2)).await;
 
@@ -31,7 +36,9 @@ pub async fn start_writer() {
                     )
                 })
                 .collect();
-            let _ = client.write(&lines.join("\n")).await;
+            let _ = client
+                .write_line_protocol(org, bucket, lines.join("\n"))
+                .await;
         }
 
         let mut rate_batch = Vec::new();
@@ -58,7 +65,9 @@ pub async fn start_writer() {
                     )
                 })
                 .collect();
-            let _ = client.write(&lines.join("\n")).await;
+            let _ = client
+                .write_line_protocol(org, bucket, lines.join("\n"))
+                .await;
         }
     }
 }

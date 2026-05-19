@@ -1,42 +1,55 @@
 use yew::prelude::*;
 use serde::Deserialize;
-use gloo::events::EventListener;
-use web_sys::window;
 
-#[derive(Debug, Clone, Deserialize)]
-struct UsageResponse {
-    // simplified for this prototype – expand as needed
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct UsageData {
+    pub provider: String,
+    pub tokens_used: i64,
+    pub cost_usd: f64,
 }
 
 #[function_component(App)]
 fn app() -> Html {
-    let usage = use_state(|| Vec::<UsageResponse>::new());
-
-    {
-        let usage = usage.clone();
-        let cb = Callback::from(move |payload: String| {
-            if let Ok(data) = serde_json::from_str::<UsageResponse>(&payload) {
-                usage.set(vec![data]);
-            }
-        });
-
-        let window = window().unwrap();
-        let listener = EventListener::new(&window, "usage_update", move |e| {
-            let ev = e.dyn_ref::<web_sys::CustomEvent>().unwrap();
-            let payload = ev.detail().as_string().unwrap();
-            cb.emit(payload);
-        });
-        drop(listener);
-    }
+    let usage = use_state(|| Vec::<UsageData>::new());
 
     html! {
         <div class="p-4">
             <h1 class="text-xl font-bold">{ "Hermes Usage Dashboard" }</h1>
-            <div>{ /* chart placeholder */ }</div>
+            <div>
+                { for usage.iter().map(|u| html! {
+                    <div key={u.provider.clone()}>
+                        <span>{ &u.provider }</span>
+                        <span>{ format!(" - {} tokens", u.tokens_used) }</span>
+                        <span>{ format!(" - ${:.4}", u.cost_usd) }</span>
+                    </div>
+                }) }
+            </div>
         </div>
     }
 }
 
-fn main() {
-    yew::Renderer::<App>::new().render();
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn usage_data_creation() {
+        let data = UsageData {
+            provider: "openrouter".to_string(),
+            tokens_used: 1000,
+            cost_usd: 0.002,
+        };
+        assert_eq!(data.provider, "openrouter");
+        assert_eq!(data.tokens_used, 1000);
+        assert!((data.cost_usd - 0.002).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn usage_data_serde() {
+        let json = r#"{"provider":"anthropic","tokens_used":500,"cost_usd":0.015}"#;
+        let data: UsageData = serde_json::from_str(json).unwrap();
+        assert_eq!(data.provider, "anthropic");
+        assert_eq!(data.tokens_used, 500);
+        assert!((data.cost_usd - 0.015).abs() < f64::EPSILON);
+    }
 }
