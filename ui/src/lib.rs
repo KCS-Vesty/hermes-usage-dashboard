@@ -52,4 +52,44 @@ mod tests {
         assert_eq!(original.provider, deserialized.provider);
         assert_eq!(original.tokens_used, deserialized.tokens_used);
     }
+
+    #[test]
+    fn test_usage_record_with_model() {
+        let rec = UsageRecord {
+            provider: "openai".to_string(),
+            model: Some("gpt-4o".to_string()),
+            tokens_used: 2000,
+            cost_usd: 0.04,
+            ts: 1_700_000_000,
+        };
+        assert_eq!(rec.model, Some("gpt-4o".to_string()));
+        assert_eq!(rec.provider, "openai");
+    }
+
+    #[test]
+    fn test_usage_record_zero_tokens() {
+        let rec = UsageRecord {
+            provider: "test".to_string(),
+            model: None,
+            tokens_used: 0,
+            cost_usd: 0.0,
+            ts: 0,
+        };
+        assert_eq!(rec.tokens_used, 0);
+        assert!((rec.cost_usd).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_usage_record_cost_formatting() {
+        // Verify cost values serialize with enough precision for display
+        let rec = UsageRecord {
+            provider: "test".to_string(),
+            model: None,
+            tokens_used: 100,
+            cost_usd: 0.001,
+            ts: 1_700_000_000,
+        };
+        let json = serde_json::to_string(&rec).unwrap();
+        assert!(json.contains("0.001"));
+    }
 }

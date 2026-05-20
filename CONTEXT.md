@@ -18,6 +18,7 @@
 
 - Metrics are buffered in-memory before batch-write to InfluxDB.
 - The collector module exposes a `Storage` trait; the default adapter is `InMemoryStorage`.
-- The db module exposes a `MetricWriter` trait; the production adapter is `InfluxDbWriter`.
-- Domain types (UsageRecord, RateLimitRecord) are defined once in `monitor::usage` and re-exported.
-- Tauri command functions are thin wrappers; the plain logic is in separate testable functions.
+- The db module provides `format_usage_lines()` and `format_rate_lines()` pure functions for line protocol formatting, and `start_writer()` for the background write loop. Errors are logged via `log::warn!`.
+- Domain types (`UsageRecord`, `RateLimitRecord`) are defined once in `monitor::usage` and re-exported from the crate root.
+- Tauri command functions are thin wrappers; the plain logic is in separate testable functions (`build_usage_summary()`).
+- The `legacy` module provides backward-compatible `record_usage()`/`drain_usage()`/`record_rate()`/`drain_rate()` functions delegating to `InMemoryStorage` behind global statics. Tests use `clear_usage()`/`clear_rate()` for isolation.

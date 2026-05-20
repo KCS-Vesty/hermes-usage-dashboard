@@ -90,4 +90,16 @@ pub mod legacy {
     pub async fn drain_rate() -> Vec<RateLimitRecord> {
         RATE_STORAGE.drain().await
     }
+
+    /// Clear all usage records. Useful for test isolation.
+    pub async fn clear_usage() {
+        let mut q = USAGE_STORAGE.inner.lock().await;
+        q.clear();
+    }
+
+    /// Clear all rate limit records. Useful for test isolation.
+    pub async fn clear_rate() {
+        let mut q = RATE_STORAGE.inner.lock().await;
+        q.clear();
+    }
 }

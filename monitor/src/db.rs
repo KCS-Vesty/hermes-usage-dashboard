@@ -3,6 +3,15 @@ use crate::usage::{UsageRecord, RateLimitRecord};
 use influxdb2::Client;
 use tokio::time::{sleep, Duration};
 
+/// Escape special characters in InfluxDB line protocol tag values.
+/// Per the InfluxDB spec, spaces, commas, and equals signs must be escaped with a backslash.
+fn escape_tag_value(s: &str) -> String {
+    s.replace('\\', "\\\\")
+        .replace(' ', "\\ ")
+        .replace(',', "\\,")
+        .replace('=', "\\=")
+}
+
 /// Format a batch of UsageRecords into InfluxDB line protocol.
 /// Pure function — no I/O, easily testable.
 pub fn format_usage_lines(records: &[UsageRecord]) -> Vec<String> {
@@ -11,8 +20,8 @@ pub fn format_usage_lines(records: &[UsageRecord]) -> Vec<String> {
         .map(|r| {
             format!(
                 "usage,provider={},model={} tokens_used={},cost_usd={} {}",
-                r.provider,
-                r.model.as_deref().unwrap_or(""),
+                escape_tag_value(&r.provider),
+                escape_tag_value(r.model.as_deref().unwrap_or("")),
                 r.tokens_used,
                 r.cost_usd,
                 r.ts * 1_000_000_000
@@ -29,8 +38,8 @@ pub fn format_rate_lines(records: &[RateLimitRecord]) -> Vec<String> {
         .map(|r| {
             format!(
                 "rate_limit,provider={},model={} hard_limit={},soft_limit={},remaining={},reset_ts={} {}",
-                r.provider,
-                r.model.as_deref().unwrap_or(""),
+                escape_tag_value(&r.provider),
+                escape_tag_value(r.model.as_deref().unwrap_or("")),
                 r.hard_limit,
                 r.soft_limit.unwrap_or(-1),
                 r.remaining,
@@ -56,18 +65,21 @@ pub async fn start_writer() {
         let usage_batch = drain_usage().await;
         if !usage_batch.is_empty() {
             let lines = format_usage_lines(&usage_batch);
-            let _ = client
-                .write_line_protocol(org, bucket, lines.join("\n"))
-                .await;
+            write_batch(&client, org, bucket, lines.join("\n")).await;
         }
 
         let rate_batch = drain_rate().await;
         if !rate_batch.is_empty() {
             let lines = format_rate_lines(&rate_batch);
-            let _ = client
-                .write_line_protocol(org, bucket, lines.join("\n"))
-                .await;
+            write_batch(&client, org, bucket, lines.join("\n")).await;
         }
+    }
+}
+
+/// Write a batch of line protocol to InfluxDB, logging errors instead of silently dropping them.
+async fn write_batch(client: &Client, org: &str, bucket: &str, body: String) {
+    if let Err(e) = client.write_line_protocol(org, bucket, body).await {
+        log::warn!("InfluxDB write failed: {}", e);
     }
 }
 
@@ -174,6 +186,39 @@ mod format_tests {
         }];
         let lines = format_rate_lines(&records);
         assert!(lines[0].contains("soft_limit=-1"));
+    }
+
+    #[test]
+    fn test_format_usage_lines_escapes_special_chars() {
+        let records = vec![UsageRecord {
+            provider: "my provider".to_string(),
+            model: Some("claude 3.5".to_string()),
+            tokens_used: 1000,
+            cost_usd: 0.002,
+            ts: 1_700_000_000,
+        }];
+        let lines = format_usage_lines(&records);
+        assert_eq!(lines.len(), 1);
+        // Spaces in tag values must be escaped with backslash per InfluxDB line protocol
+        assert!(lines[0].contains("provider=my\\ provider"), "provider not escaped: {}", lines[0]);
+        assert!(lines[0].contains("model=claude\\ 3.5"), "model not escaped: {}", lines[0]);
+    }
+
+    #[test]
+    fn test_format_rate_lines_escapes_special_chars() {
+        let records = vec![RateLimitRecord {
+            provider: "my provider".to_string(),
+            model: Some("gpt=4o".to_string()),
+            hard_limit: 10000,
+            soft_limit: Some(5000),
+            remaining: 7500,
+            reset_ts: 1_700_000_100,
+            ts: 1_700_000_000,
+        }];
+        let lines = format_rate_lines(&records);
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].contains("provider=my\\ provider"), "provider not escaped: {}", lines[0]);
+        assert!(lines[0].contains("model=gpt\\=4o"), "model not escaped: {}", lines[0]);
     }
 
     #[test]
