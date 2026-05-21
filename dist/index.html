@@ -74,6 +74,26 @@
         #status { color: #ffcc00; font-size: 14px; margin-bottom: 16px; }
         #error { color: #ff4444; font-size: 14px; margin-bottom: 16px; }
         .loading { text-align: center; padding: 40px; color: #666; }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .empty-state h2 {
+            font-size: 18px;
+            color: #ccc;
+            margin-bottom: 8px;
+        }
+        .empty-state p {
+            font-size: 14px;
+            color: #666;
+            max-width: 400px;
+            margin: 0 auto;
+        }
     </style>
 </head>
 <body>
@@ -97,12 +117,28 @@
         }
 
         function renderDashboard(data) {
-            statusEl.textContent = 'Connected';
-            statusEl.style.color = '#4ade80';
-
             const providers = data.providers || [];
             const totalTokens = data.total_tokens || 0;
             const totalCost = data.total_cost_usd || 0;
+
+            // Check if there's actually any data
+            const hasData = providers.length > 0 || totalTokens > 0 || totalCost > 0;
+
+            if (!hasData) {
+                statusEl.textContent = 'No data available';
+                statusEl.style.color = '#ff8800';
+                contentEl.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📊</div>
+                        <h2>No Usage Data</h2>
+                        <p>No usage data has been recorded yet. Data will appear here once usage events are captured.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            statusEl.textContent = 'Connected';
+            statusEl.style.color = '#4ade80';
 
             let rows = '';
             for (const p of providers) {

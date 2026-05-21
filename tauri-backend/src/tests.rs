@@ -1,16 +1,13 @@
 #[cfg(test)]
 mod tests {
-    use crate::build_usage_summary;
-    use crate::ProviderUsage;
-    use crate::UsageSummary;
-
+    use hermes_monitor::{ProviderUsage, UsageSummary};
+    use hermes_monitor::build_usage_summary;
     #[test]
     fn test_get_dashboard_data_returns_ok() {
-        // The command wrapper returns a JSON string — test the plain function
         let result = crate::get_dashboard_data();
-        let parsed: serde_json::Value = serde_json::from_str(&result).unwrap();
-        assert_eq!(parsed["status"], "ok");
-        assert_eq!(parsed["message"], "Hermes Usage Dashboard");
+        assert_eq!(result["status"], "ok");
+        assert_eq!(result["message"], "Hermes Usage Dashboard");
+        assert!(result.get("version").is_some(), "version field should be present");
     }
 
     #[test]

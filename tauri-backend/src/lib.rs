@@ -1,58 +1,19 @@
+use hermes_monitor::build_usage_summary;
+use tauri::Emitter;
 use std::time::Duration;
 use tokio::time::sleep;
-use tauri::Emitter;
 
-/// Plain function (no #[tauri::command]) — testable without Tauri runtime.
-/// Returns usage summary data as a typed struct.
-pub fn build_usage_summary() -> UsageSummary {
-    UsageSummary {
-        providers: vec![
-            ProviderUsage {
-                name: "openrouter".to_string(),
-                tokens_used: 15000,
-                cost_usd: 0.45,
-            },
-            ProviderUsage {
-                name: "anthropic".to_string(),
-                tokens_used: 8000,
-                cost_usd: 0.24,
-            },
-            ProviderUsage {
-                name: "openai".to_string(),
-                tokens_used: 12000,
-                cost_usd: 0.36,
-            },
-        ],
-        total_tokens: 35000,
-        total_cost_usd: 1.05,
-    }
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct ProviderUsage {
-    pub name: String,
-    pub tokens_used: i64,
-    pub cost_usd: f64,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
-pub struct UsageSummary {
-    pub providers: Vec<ProviderUsage>,
-    pub total_tokens: i64,
-    pub total_cost_usd: f64,
-}
-
-/// Tauri command — thin wrapper that calls the plain function.
+/// Tauri command — returns dashboard status as structured JSON.
 #[tauri::command]
-fn get_dashboard_data() -> String {
+fn get_dashboard_data() -> serde_json::Value {
     serde_json::json!({
         "status": "ok",
-        "message": "Hermes Usage Dashboard"
+        "message": "Hermes Usage Dashboard",
+        "version": env!("CARGO_PKG_VERSION"),
     })
-    .to_string()
 }
 
-/// Tauri command — thin wrapper that serializes the typed struct.
+/// Tauri command — thin wrapper that serializes the typed struct from the domain layer.
 #[tauri::command]
 fn get_usage_summary() -> String {
     let summary = build_usage_summary();

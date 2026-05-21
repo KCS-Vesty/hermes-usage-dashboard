@@ -1,27 +1,15 @@
-use serde::Deserialize;
+use hermes_monitor::{ProviderUsage, UsageSummary};
 use yew::prelude::*;
 
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct ProviderUsage {
-    pub name: String,
-    pub tokens_used: i64,
-    pub cost_usd: f64,
-}
-
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-pub struct UsageSummary {
-    pub providers: Vec<ProviderUsage>,
-    pub total_tokens: i64,
-    pub total_cost_usd: f64,
-}
-
+#[allow(dead_code)]
 fn get_usage_summary() -> Option<UsageSummary> {
-    // When running inside Tauri, the backend provides data via window.__TAURI__.invoke().
+    // When running inside Tauri, the frontend JS calls window.__TAURI__.invoke()
+    // and passes the data to the Yew app via props or state.
     // When running standalone (dev/test), use mock data.
-    // For now, always use mock data — the Tauri IPC layer is handled by the host.
     mock_data()
 }
 
+#[allow(dead_code)]
 fn mock_data() -> Option<UsageSummary> {
     Some(UsageSummary {
         providers: vec![
@@ -77,6 +65,7 @@ fn app() -> Html {
     }
 }
 
+#[allow(dead_code)]
 fn format_number(n: i64) -> String {
     let s = n.to_string();
     let mut out = String::new();
