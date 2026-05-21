@@ -18,13 +18,11 @@ pub struct UsageSummary {
 
 #[wasm_bindgen]
 extern "C" {
-    #[wasm_bindgen(js_namespace = window, js_name = "__TAURI__")]
-    static _TAURI: JsValue;
-
     #[wasm_bindgen(js_name = "invoke", catch)]
     async fn tauri_invoke(cmd: &str, args: JsValue) -> Result<JsValue, JsValue>;
 }
 
+#[allow(dead_code)]
 async fn fetch_usage_summary() -> Option<UsageSummary> {
     let result = match tauri_invoke("get_usage_summary", JsValue::NULL).await {
         Ok(val) => val,
@@ -34,6 +32,7 @@ async fn fetch_usage_summary() -> Option<UsageSummary> {
     serde_json::from_str(&json_str).ok().or_else(mock_data)
 }
 
+#[allow(dead_code)]
 fn mock_data() -> Option<UsageSummary> {
     Some(UsageSummary {
         providers: vec![
@@ -106,6 +105,7 @@ fn app() -> Html {
     }
 }
 
+#[allow(dead_code)]
 fn format_number(n: i64) -> String {
     let s = n.to_string();
     let mut out = String::new();
