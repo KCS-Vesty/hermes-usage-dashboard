@@ -3,15 +3,20 @@ name = "hermes-monitor"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["types"]
+types = ["dep:serde", "dep:serde_json", "dep:thiserror"]
+server = ["types", "dep:tokio", "dep:influxdb2", "dep:once_cell", "dep:async-trait", "dep:dirs", "dep:config", "dep:env_logger"]
+
 [dependencies]
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-influxdb2 = "0.3"
-once_cell = "1"
-async-trait = "0.1"
-thiserror = "1"
-dirs = "5"
-config = "0.14"
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }
+thiserror = { version = "1", optional = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"], optional = true }
+influxdb2 = { version = "0.3", optional = true }
+once_cell = { version = "1", optional = true }
+async-trait = { version = "0.1", optional = true }
+dirs = { version = "5", optional = true }
+config = { version = "0.14", optional = true }
 log = "0.4"
-env_logger = "0.10"
+env_logger = { version = "0.10", optional = true }

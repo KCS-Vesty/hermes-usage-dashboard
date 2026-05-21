@@ -1,14 +1,18 @@
 pub mod usage;
-pub mod collector;
-pub mod db;
+#[cfg(feature = "types")]
 pub mod error;
 
-// Re-export the domain types and error types at the crate root
-// so downstream crates (tauri-backend, ui) import from one place.
-pub use error::{DashboardError, Result};
+// Re-export the domain types at the crate root
 pub use usage::{RateLimitRecord, UsageRecord};
+#[cfg(feature = "types")]
+pub use error::{DashboardError, Result};
 
-#[cfg(test)]
+#[cfg(feature = "server")]
+pub mod collector;
+#[cfg(feature = "server")]
+pub mod db;
+
+#[cfg(all(test, feature = "server"))]
 mod tests;
-#[cfg(test)]
+#[cfg(all(test, feature = "server"))]
 mod error_tests;

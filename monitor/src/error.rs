@@ -1,17 +1,18 @@
+#[cfg(feature = "types")]
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[cfg_attr(feature = "types", derive(Debug, Error))]
 pub enum DashboardError {
-    #[error("InfluxDB write failed: {0}")]
+    #[cfg_attr(feature = "types", error("InfluxDB write failed: {0}"))]
     WriteFailed(String),
 
-    #[error("InfluxDB query failed: {0}")]
+    #[cfg_attr(feature = "types", error("InfluxDB query failed: {0}"))]
     QueryFailed(String),
 
-    #[error("Configuration error: {0}")]
+    #[cfg_attr(feature = "types", error("Configuration error: {0}"))]
     Config(String),
 
-    #[error("Storage error: {0}")]
+    #[cfg_attr(feature = "types", error("Storage error: {0}"))]
     Storage(String),
 }
 

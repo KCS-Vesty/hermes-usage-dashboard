@@ -1,6 +1,5 @@
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "types", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone)]
 pub struct UsageRecord {
     pub provider: String,
     pub model: Option<String>,
@@ -9,7 +8,8 @@ pub struct UsageRecord {
     pub ts: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "types", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone)]
 pub struct RateLimitRecord {
     pub provider: String,
     pub model: Option<String>,
