@@ -15,8 +15,3 @@ debug = false
 yew = { version = "0.21", features = ["csr"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4"
-js-sys = "0.3"
-gloo = { version = "0.8", features = ["events"] }
-log = "0.4"

@@ -1,0 +1,8 @@
+*
+!.gitignore
+!index.html
+!hermes_dashboard_ui.js
+!hermes_dashboard_ui_bg.wasm
+!hermes_dashboard_ui.d.ts
+!hermes_dashboard_ui_bg.wasm.d.ts
+!package.json

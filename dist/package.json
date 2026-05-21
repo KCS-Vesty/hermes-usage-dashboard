@@ -1,0 +1,15 @@
+{
+  "name": "hermes-dashboard-ui",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "hermes_dashboard_ui_bg.wasm",
+    "hermes_dashboard_ui.js",
+    "hermes_dashboard_ui.d.ts"
+  ],
+  "main": "hermes_dashboard_ui.js",
+  "types": "hermes_dashboard_ui.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

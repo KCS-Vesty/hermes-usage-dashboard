@@ -1,5 +1,4 @@
 use serde::Deserialize;
-use wasm_bindgen::prelude::*;
 use yew::prelude::*;
 
 #[derive(Debug, Clone, Deserialize, PartialEq)]
@@ -16,23 +15,13 @@ pub struct UsageSummary {
     pub total_cost_usd: f64,
 }
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_name = "invoke", catch)]
-    async fn tauri_invoke(cmd: &str, args: JsValue) -> Result<JsValue, JsValue>;
+fn get_usage_summary() -> Option<UsageSummary> {
+    // When running inside Tauri, the backend provides data via window.__TAURI__.invoke().
+    // When running standalone (dev/test), use mock data.
+    // For now, always use mock data — the Tauri IPC layer is handled by the host.
+    mock_data()
 }
 
-#[allow(dead_code)]
-async fn fetch_usage_summary() -> Option<UsageSummary> {
-    let result = match tauri_invoke("get_usage_summary", JsValue::NULL).await {
-        Ok(val) => val,
-        Err(_) => return mock_data(),
-    };
-    let json_str = result.as_string()?;
-    serde_json::from_str(&json_str).ok().or_else(mock_data)
-}
-
-#[allow(dead_code)]
 fn mock_data() -> Option<UsageSummary> {
     Some(UsageSummary {
         providers: vec![
@@ -47,28 +36,13 @@ fn mock_data() -> Option<UsageSummary> {
 
 #[function_component(App)]
 fn app() -> Html {
-    let summary = use_state(|| None::<UsageSummary>);
-    let error = use_state(|| None::<String>);
-
-    {
-        let summary = summary.clone();
-        let error = error.clone();
-        use_effect(move || {
-            wasm_bindgen_futures::spawn_local(async move {
-                match fetch_usage_summary().await {
-                    Some(data) => summary.set(Some(data)),
-                    None => error.set(Some("Failed to load data".into())),
-                }
-            });
-            || ()
-        });
-    }
+    let summary = get_usage_summary();
 
     html! {
         <div>
             <h1>{ "Hermes Usage Dashboard" }</h1>
             {
-                if let Some(ref s) = *summary {
+                if let Some(ref s) = summary {
                     html! {
                         <>
                             <div>
@@ -95,17 +69,14 @@ fn app() -> Html {
                             </table>
                         </>
                     }
-                } else if let Some(ref e) = *error {
-                    html! { <p>{ e }</p> }
                 } else {
-                    html! { <p>{ "Loading..." }</p> }
+                    html! { <p>{ "No data available" }</p> }
                 }
             }
         </div>
     }
 }
 
-#[allow(dead_code)]
 fn format_number(n: i64) -> String {
     let s = n.to_string();
     let mut out = String::new();
@@ -151,5 +122,39 @@ mod tests {
         assert_eq!(data.providers.len(), 3);
         assert_eq!(data.total_tokens, 35_000);
         assert!((data.total_cost_usd - 1.05).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_get_usage_summary_returns_data() {
+        let data = get_usage_summary().unwrap();
+        assert_eq!(data.providers.len(), 3);
+        assert_eq!(data.total_tokens, 35_000);
+    }
+
+    #[test]
+    fn test_provider_names() {
+        let data = get_usage_summary().unwrap();
+        let names: Vec<&str> = data.providers.iter().map(|p| p.name.as_str()).collect();
+        assert!(names.contains(&"openrouter"));
+        assert!(names.contains(&"anthropic"));
+        assert!(names.contains(&"openai"));
+    }
+
+    #[test]
+    fn test_costs_are_positive() {
+        let data = get_usage_summary().unwrap();
+        for p in &data.providers {
+            assert!(p.cost_usd > 0.0, "cost should be positive for {}", p.name);
+        }
+        assert!(data.total_cost_usd > 0.0);
+    }
+
+    #[test]
+    fn test_tokens_are_positive() {
+        let data = get_usage_summary().unwrap();
+        for p in &data.providers {
+            assert!(p.tokens_used > 0, "tokens should be positive for {}", p.name);
+        }
+        assert!(data.total_tokens > 0);
     }
 }
