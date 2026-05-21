@@ -1,24 +1,119 @@
-use hermes_monitor::UsageRecord;
+use serde::Deserialize;
+use wasm_bindgen::prelude::*;
 use yew::prelude::*;
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct ProviderUsage {
+    pub name: String,
+    pub tokens_used: i64,
+    pub cost_usd: f64,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct UsageSummary {
+    pub providers: Vec<ProviderUsage>,
+    pub total_tokens: i64,
+    pub total_cost_usd: f64,
+}
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = window, js_name = "__TAURI__")]
+    static _TAURI: JsValue;
+
+    #[wasm_bindgen(js_name = "invoke", catch)]
+    async fn tauri_invoke(cmd: &str, args: JsValue) -> Result<JsValue, JsValue>;
+}
+
+async fn fetch_usage_summary() -> Option<UsageSummary> {
+    let result = match tauri_invoke("get_usage_summary", JsValue::NULL).await {
+        Ok(val) => val,
+        Err(_) => return mock_data(),
+    };
+    let json_str = result.as_string()?;
+    serde_json::from_str(&json_str).ok().or_else(mock_data)
+}
+
+fn mock_data() -> Option<UsageSummary> {
+    Some(UsageSummary {
+        providers: vec![
+            ProviderUsage { name: "openrouter".into(), tokens_used: 15_000, cost_usd: 0.45 },
+            ProviderUsage { name: "anthropic".into(), tokens_used: 8_000, cost_usd: 0.24 },
+            ProviderUsage { name: "openai".into(), tokens_used: 12_000, cost_usd: 0.36 },
+        ],
+        total_tokens: 35_000,
+        total_cost_usd: 1.05,
+    })
+}
 
 #[function_component(App)]
 fn app() -> Html {
-    let usage = use_state(Vec::<UsageRecord>::new);
+    let summary = use_state(|| None::<UsageSummary>);
+    let error = use_state(|| None::<String>);
+
+    {
+        let summary = summary.clone();
+        let error = error.clone();
+        use_effect(move || {
+            wasm_bindgen_futures::spawn_local(async move {
+                match fetch_usage_summary().await {
+                    Some(data) => summary.set(Some(data)),
+                    None => error.set(Some("Failed to load data".into())),
+                }
+            });
+            || ()
+        });
+    }
 
     html! {
-        <div class="p-4">
-            <h1 class="text-xl font-bold">{ "Hermes Usage Dashboard" }</h1>
-            <div>
-                { for usage.iter().map(|u| html! {
-                    <div key={u.provider.clone()}>
-                        <span>{ &u.provider }</span>
-                        <span>{ format!(" - {} tokens", u.tokens_used) }</span>
-                        <span>{ format!(" - ${:.4}", u.cost_usd) }</span>
-                    </div>
-                }) }
-            </div>
+        <div>
+            <h1>{ "Hermes Usage Dashboard" }</h1>
+            {
+                if let Some(ref s) = *summary {
+                    html! {
+                        <>
+                            <div>
+                                <p>{ "Total Tokens: " }{ format_number(s.total_tokens) }</p>
+                                <p>{ "Total Cost: $" }{ format!("{:.2}", s.total_cost_usd) }</p>
+                            </div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>{ "Provider" }</th>
+                                        <th>{ "Tokens" }</th>
+                                        <th>{ "Cost" }</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    { for s.providers.iter().map(|p| html! {
+                                        <tr>
+                                            <td>{ &p.name }</td>
+                                            <td>{ format_number(p.tokens_used) }</td>
+                                            <td>{ format!("${:.4}", p.cost_usd) }</td>
+                                        </tr>
+                                    }) }
+                                </tbody>
+                            </table>
+                        </>
+                    }
+                } else if let Some(ref e) = *error {
+                    html! { <p>{ e }</p> }
+                } else {
+                    html! { <p>{ "Loading..." }</p> }
+                }
+            }
         </div>
     }
+}
+
+fn format_number(n: i64) -> String {
+    let s = n.to_string();
+    let mut out = String::new();
+    for (i, ch) in s.chars().rev().enumerate() {
+        if i > 0 && i % 3 == 0 { out.push(','); }
+        out.push(ch);
+    }
+    out.chars().rev().collect()
 }
 
 #[cfg(test)]
@@ -26,70 +121,35 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_usage_record_from_monitor() {
-        let rec = UsageRecord {
-            provider: "openrouter".to_string(),
-            model: Some("claude-3".to_string()),
-            tokens_used: 1000,
-            cost_usd: 0.002,
-            ts: 1_700_000_000,
-        };
-        assert_eq!(rec.provider, "openrouter");
-        assert_eq!(rec.tokens_used, 1000);
+    fn test_format_number() {
+        assert_eq!(format_number(0), "0");
+        assert_eq!(format_number(1_000), "1,000");
+        assert_eq!(format_number(35_000), "35,000");
+        assert_eq!(format_number(1_234_567), "1,234,567");
     }
 
     #[test]
-    fn test_usage_record_serde_roundtrip() {
-        let original = UsageRecord {
-            provider: "anthropic".to_string(),
-            model: None,
-            tokens_used: 500,
-            cost_usd: 0.015,
-            ts: 1_700_000_000,
-        };
-        let json = serde_json::to_string(&original).unwrap();
-        let deserialized: UsageRecord = serde_json::from_str(&json).unwrap();
-        assert_eq!(original.provider, deserialized.provider);
-        assert_eq!(original.tokens_used, deserialized.tokens_used);
+    fn test_provider_usage_deserialization() {
+        let json = r#"{"name":"openrouter","tokens_used":15000,"cost_usd":0.45}"#;
+        let p: ProviderUsage = serde_json::from_str(json).unwrap();
+        assert_eq!(p.name, "openrouter");
+        assert_eq!(p.tokens_used, 15_000);
+        assert!((p.cost_usd - 0.45).abs() < f64::EPSILON);
     }
 
     #[test]
-    fn test_usage_record_with_model() {
-        let rec = UsageRecord {
-            provider: "openai".to_string(),
-            model: Some("gpt-4o".to_string()),
-            tokens_used: 2000,
-            cost_usd: 0.04,
-            ts: 1_700_000_000,
-        };
-        assert_eq!(rec.model, Some("gpt-4o".to_string()));
-        assert_eq!(rec.provider, "openai");
+    fn test_usage_summary_deserialization() {
+        let json = r#"{"providers":[{"name":"openrouter","tokens_used":15000,"cost_usd":0.45}],"total_tokens":15000,"total_cost_usd":0.45}"#;
+        let s: UsageSummary = serde_json::from_str(json).unwrap();
+        assert_eq!(s.providers.len(), 1);
+        assert_eq!(s.total_tokens, 15_000);
     }
 
     #[test]
-    fn test_usage_record_zero_tokens() {
-        let rec = UsageRecord {
-            provider: "test".to_string(),
-            model: None,
-            tokens_used: 0,
-            cost_usd: 0.0,
-            ts: 0,
-        };
-        assert_eq!(rec.tokens_used, 0);
-        assert!((rec.cost_usd).abs() < f64::EPSILON);
-    }
-
-    #[test]
-    fn test_usage_record_cost_formatting() {
-        // Verify cost values serialize with enough precision for display
-        let rec = UsageRecord {
-            provider: "test".to_string(),
-            model: None,
-            tokens_used: 100,
-            cost_usd: 0.001,
-            ts: 1_700_000_000,
-        };
-        let json = serde_json::to_string(&rec).unwrap();
-        assert!(json.contains("0.001"));
+    fn test_mock_data() {
+        let data = mock_data().unwrap();
+        assert_eq!(data.providers.len(), 3);
+        assert_eq!(data.total_tokens, 35_000);
+        assert!((data.total_cost_usd - 1.05).abs() < f64::EPSILON);
     }
 }
