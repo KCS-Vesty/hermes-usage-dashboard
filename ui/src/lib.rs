@@ -3,9 +3,6 @@ use yew::prelude::*;
 
 #[allow(dead_code)]
 fn get_usage_summary() -> Option<UsageSummary> {
-    // When running inside Tauri, the frontend JS calls window.__TAURI__.invoke()
-    // and passes the data to the Yew app via props or state.
-    // When running standalone (dev/test), use mock data.
     mock_data()
 }
 
@@ -16,9 +13,11 @@ fn mock_data() -> Option<UsageSummary> {
             ProviderUsage { name: "openrouter".into(), tokens_used: 15_000, cost_usd: 0.45 },
             ProviderUsage { name: "anthropic".into(), tokens_used: 8_000, cost_usd: 0.24 },
             ProviderUsage { name: "openai".into(), tokens_used: 12_000, cost_usd: 0.36 },
+            ProviderUsage { name: "opencode zen".into(), tokens_used: 5_000, cost_usd: 0.15 },
+            ProviderUsage { name: "opencode go".into(), tokens_used: 3_000, cost_usd: 0.09 },
         ],
-        total_tokens: 35_000,
-        total_cost_usd: 1.05,
+        total_tokens: 38_000,
+        total_cost_usd: 1.29,
     })
 }
 
@@ -84,7 +83,7 @@ mod tests {
     fn test_format_number() {
         assert_eq!(format_number(0), "0");
         assert_eq!(format_number(1_000), "1,000");
-        assert_eq!(format_number(35_000), "35,000");
+        assert_eq!(format_number(38_000), "38,000");
         assert_eq!(format_number(1_234_567), "1,234,567");
     }
 
@@ -108,16 +107,16 @@ mod tests {
     #[test]
     fn test_mock_data() {
         let data = mock_data().unwrap();
-        assert_eq!(data.providers.len(), 3);
-        assert_eq!(data.total_tokens, 35_000);
-        assert!((data.total_cost_usd - 1.05).abs() < f64::EPSILON);
+        assert_eq!(data.providers.len(), 5);
+        assert_eq!(data.total_tokens, 38_000);
+        assert!((data.total_cost_usd - 1.29).abs() < f64::EPSILON);
     }
 
     #[test]
     fn test_get_usage_summary_returns_data() {
         let data = get_usage_summary().unwrap();
-        assert_eq!(data.providers.len(), 3);
-        assert_eq!(data.total_tokens, 35_000);
+        assert_eq!(data.providers.len(), 5);
+        assert_eq!(data.total_tokens, 38_000);
     }
 
     #[test]
@@ -127,6 +126,8 @@ mod tests {
         assert!(names.contains(&"openrouter"));
         assert!(names.contains(&"anthropic"));
         assert!(names.contains(&"openai"));
+        assert!(names.contains(&"opencode zen"));
+        assert!(names.contains(&"opencode go"));
     }
 
     #[test]

@@ -2,6 +2,7 @@
 mod tests {
     use hermes_monitor::{ProviderUsage, UsageSummary};
     use hermes_monitor::build_usage_summary;
+
     #[test]
     fn test_get_dashboard_data_returns_ok() {
         let result = crate::get_dashboard_data();
@@ -13,19 +14,19 @@ mod tests {
     #[test]
     fn test_build_usage_summary_returns_providers() {
         let summary = build_usage_summary();
-        assert_eq!(summary.providers.len(), 3);
+        assert_eq!(summary.providers.len(), 5);
     }
 
     #[test]
     fn test_build_usage_summary_total_tokens() {
         let summary = build_usage_summary();
-        assert_eq!(summary.total_tokens, 35000);
+        assert_eq!(summary.total_tokens, 38_000);
     }
 
     #[test]
     fn test_build_usage_summary_total_cost() {
         let summary = build_usage_summary();
-        assert!((summary.total_cost_usd - 1.05).abs() < f64::EPSILON);
+        assert!((summary.total_cost_usd - 1.29).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -35,6 +36,8 @@ mod tests {
         assert!(names.contains(&"openrouter"));
         assert!(names.contains(&"anthropic"));
         assert!(names.contains(&"openai"));
+        assert!(names.contains(&"opencode zen"));
+        assert!(names.contains(&"opencode go"));
     }
 
     #[test]
@@ -60,6 +63,6 @@ mod tests {
     fn test_get_usage_summary_command_valid_json() {
         let result = crate::get_usage_summary();
         let parsed: UsageSummary = serde_json::from_str(&result).unwrap();
-        assert_eq!(parsed.providers.len(), 3);
+        assert_eq!(parsed.providers.len(), 5);
     }
 }

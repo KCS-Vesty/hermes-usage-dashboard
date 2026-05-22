@@ -59,8 +59,18 @@ pub fn build_usage_summary() -> UsageSummary {
                 tokens_used: 12_000,
                 cost_usd: 0.36,
             },
+            ProviderUsage {
+                name: "opencode zen".to_string(),
+                tokens_used: 5_000,
+                cost_usd: 0.15,
+            },
+            ProviderUsage {
+                name: "opencode go".to_string(),
+                tokens_used: 3_000,
+                cost_usd: 0.09,
+            },
         ],
-        total_tokens: 35_000,
-        total_cost_usd: 1.05,
+        total_tokens: 38_000,
+        total_cost_usd: 1.29,
     }
 }
