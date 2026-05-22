@@ -1,4 +1,7 @@
+mod providers;
+
 use hermes_monitor::build_usage_summary;
+use providers::ProviderConfig;
 use serde_json::Value;
 use std::collections::HashMap;
 use tauri::Emitter;
@@ -24,11 +27,11 @@ fn get_usage_summary() -> String {
 // --- InfluxDB commands ---
 
 #[derive(serde::Deserialize)]
-struct InfluxConfig {
-    url: String,
-    org: String,
-    bucket: String,
-    token: String,
+pub struct InfluxConfig {
+    pub url: String,
+    pub org: String,
+    pub bucket: String,
+    pub token: String,
 }
 
 #[tauri::command]
@@ -39,7 +42,6 @@ async fn test_influx_connection(config: InfluxConfig) -> Result<Value, String> {
         Ok(resp) => {
             let status = resp.status();
             if status.is_success() || status.as_u16() == 401 {
-                // 401 means InfluxDB is running but needs auth — that's OK
                 Ok(serde_json::json!({ "ok": true, "status": status.as_u16() }))
             } else {
                 Err(format!("InfluxDB returned status {}", status))
@@ -51,10 +53,10 @@ async fn test_influx_connection(config: InfluxConfig) -> Result<Value, String> {
 
 #[tauri::command]
 async fn query_influxdb(config: InfluxConfig) -> Result<Value, String> {
-    // Query InfluxDB for usage data from the last 24 hours
     let client = reqwest::Client::new();
     let query_url = format!("{}/api/v2/query", config.url);
 
+    // Query usage data from the last 24 hours, grouped by provider
     let flux_query = format!(
         r#"from(bucket: "{}")
         |> range(start: -24h)
@@ -65,16 +67,11 @@ async fn query_influxdb(config: InfluxConfig) -> Result<Value, String> {
         config.bucket
     );
 
-    let body = serde_json::json!({
-        "query": flux_query,
-        "type": "flux"
-    });
-
     let resp = client
         .post(&query_url)
         .header("Authorization", format!("Token {}", config.token))
         .header("Content-Type", "application/vnd.flux")
-        .json(&body)
+        .json(&serde_json::json!({ "query": flux_query, "type": "flux" }))
         .send()
         .await
         .map_err(|e| format!("InfluxDB query failed: {}", e))?;
@@ -83,51 +80,67 @@ async fn query_influxdb(config: InfluxConfig) -> Result<Value, String> {
         return Err(format!("InfluxDB returned status {}", resp.status()));
     }
 
-    // Parse InfluxDB response and convert to UsageSummary format
     let text = resp.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
-    let parsed = parse_influx_response(&text).map_err(|e| format!("Parse error: {}", e))?;
+    let parsed = parse_influx_csv(&text).map_err(|e| format!("Parse error: {}", e))?;
     Ok(parsed)
 }
 
-fn parse_influx_response(text: &str) -> Result<Value, String> {
-    // InfluxDB returns CSV-like data in the response body
-    // Parse it into our UsageSummary format
+/// Parse InfluxDB's annotated CSV response into UsageSummary format.
+/// InfluxDB returns CSV with comment lines starting with #, then headers, then data rows.
+fn parse_influx_csv(text: &str) -> Result<Value, String> {
     let mut providers = Vec::new();
     let mut total_tokens: i64 = 0;
     let mut total_cost: f64 = 0.0;
 
+    // Parse header column positions
+    let mut header_cols: Vec<&str> = Vec::new();
+    let mut provider_col = None;
+    let mut tokens_col = None;
+    let mut cost_col = None;
+
     for line in text.lines() {
         let line = line.trim();
-        if line.is_empty() || line.starts_with('#') || line.starts_with("result") {
+        if line.is_empty() {
             continue;
         }
-        let cols: Vec<&str> = line.split(',').collect();
-        if cols.len() < 4 {
+        if line.starts_with('#') {
+            // Parse header line: #datatype,string,long,dateTime:RFC3339,...
+            // The column names come after the datatype annotations
             continue;
         }
-        // Find provider, tokens_used, cost_usd columns
-        let mut provider_name = String::new();
-        let mut tokens: i64 = 0;
-        let mut cost: f64 = 0.0;
 
-        for (i, col) in cols.iter().enumerate() {
-            let col = col.trim();
-            if i == 3 && !col.is_empty() && col != "null" {
-                // provider column
-                provider_name = col.to_string();
-            }
-            // Look for tokens_used and cost_usd in the values
-            if col.contains("tokens_used") {
-                if let Some(val) = cols.get(i + 1) {
-                    tokens = val.trim().parse::<i64>().unwrap_or(0);
+        let cols: Vec<&str> = line.split(',').map(|s| s.trim()).collect();
+
+        // First non-comment line after headers contains column names
+        if header_cols.is_empty() && !line.starts_with("result") {
+            header_cols = cols.clone();
+            // Find column indices
+            for (i, col) in header_cols.iter().enumerate() {
+                match *col {
+                    "provider" => provider_col = Some(i),
+                    "tokens_used" => tokens_col = Some(i),
+                    "cost_usd" => cost_col = Some(i),
+                    _ => {}
                 }
             }
-            if col.contains("cost_usd") {
-                if let Some(val) = cols.get(i + 1) {
-                    cost = val.trim().parse::<f64>().unwrap_or(0.0);
-                }
-            }
+            continue;
         }
+
+        // Skip the "result,table,_start,_stop" header line
+        if cols.first() == Some(&"result") {
+            continue;
+        }
+
+        // Data row
+        let provider_name = provider_col.and_then(|i| cols.get(i)).unwrap_or(&"").to_string();
+        let tokens = tokens_col
+            .and_then(|i| cols.get(i))
+            .and_then(|v| v.parse::<i64>().ok())
+            .unwrap_or(0);
+        let cost = cost_col
+            .and_then(|i| cols.get(i))
+            .and_then(|v| v.parse::<f64>().ok())
+            .unwrap_or(0.0);
 
         if !provider_name.is_empty() && tokens > 0 {
             providers.push(serde_json::json!({
@@ -157,26 +170,18 @@ struct ProviderKeys {
 
 #[tauri::command]
 async fn test_provider_keys(keys: ProviderKeys) -> Value {
+    let config = ProviderConfig::from_map(&keys.keys);
+    let results = providers::test_all_keys(&config).await;
+
     let mut ok = Vec::new();
     let mut failed = Vec::new();
 
-    for (provider, key) in &keys.keys {
-        if key.trim().is_empty() {
-            continue;
-        }
-        let result = match provider.as_str() {
-            "openrouter" => test_openrouter_key(key).await,
-            "anthropic" => test_anthropic_key(key).await,
-            "openai" => test_openai_key(key).await,
-            "opencode-zen" => test_opencode_zen_key(key).await,
-            "opencode-go" => test_opencode_go_key(key).await,
-            _ => Err(format!("Unknown provider: {}", provider)),
-        };
+    for (name, result) in results {
         match result {
-            Ok(_) => ok.push(provider.clone()),
+            Ok(_) => ok.push(name),
             Err(e) => {
-                log::warn!("Provider {} test failed: {}", provider, e);
-                failed.push(provider.clone());
+                log::warn!("Provider {} test failed: {}", name, e);
+                failed.push(serde_json::json!({ "name": name, "error": e.to_string() }));
             }
         }
     }
@@ -186,163 +191,28 @@ async fn test_provider_keys(keys: ProviderKeys) -> Value {
 
 #[tauri::command]
 async fn query_providers(keys: ProviderKeys) -> Result<Value, String> {
-    let mut providers = Vec::new();
+    let config = ProviderConfig::from_map(&keys.keys);
+    let results = providers::query_all(&config).await;
+
+    let mut provider_list = Vec::new();
     let mut total_tokens: i64 = 0;
     let mut total_cost: f64 = 0.0;
 
-    for (provider, key) in &keys.keys {
-        if key.trim().is_empty() {
-            continue;
-        }
-        let result = match provider.as_str() {
-            "openrouter" => query_openrouter(key).await,
-            "anthropic" => query_anthropic(key).await,
-            "openai" => query_openai(key).await,
-            "opencode-zen" => query_opencode_zen(key).await,
-            "opencode-go" => query_opencode_go(key).await,
-            _ => continue,
-        };
-        match result {
-            Ok(data) => {
-                providers.push(serde_json::json!({
-                    "name": provider,
-                    "tokens_used": data.tokens,
-                    "cost_usd": data.cost
-                }));
-                total_tokens += data.tokens;
-                total_cost += data.cost;
-            }
-            Err(e) => {
-                log::warn!("Failed to query {}: {}", provider, e);
-            }
-        }
+    for (name, data) in results {
+        provider_list.push(serde_json::json!({
+            "name": name,
+            "tokens_used": data.tokens,
+            "cost_usd": data.cost
+        }));
+        total_tokens += data.tokens;
+        total_cost += data.cost;
     }
 
     Ok(serde_json::json!({
-        "providers": providers,
+        "providers": provider_list,
         "total_tokens": total_tokens,
         "total_cost_usd": (total_cost * 100.0).round() / 100.0
     }))
-}
-
-// --- Provider API implementations ---
-
-struct ProviderData {
-    tokens: i64,
-    cost: f64,
-}
-
-async fn test_openrouter_key(key: &str) -> Result<(), String> {
-    let client = reqwest::Client::new();
-    let resp = client
-        .get("https://openrouter.ai/api/v1/auth/key")
-        .header("Authorization", format!("Bearer {}", key))
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    if resp.status().is_success() {
-        Ok(())
-    } else {
-        Err(format!("Status: {}", resp.status()))
-    }
-}
-
-async fn query_openrouter(key: &str) -> Result<ProviderData, String> {
-    let client = reqwest::Client::new();
-    let resp = client
-        .get("https://openrouter.ai/api/v1/usage")
-        .header("Authorization", format!("Bearer {}", key))
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    let json: Value = resp.json().await.map_err(|e| e.to_string())?;
-    let usage = json["data"]["total_usage"].as_f64().unwrap_or(0.0);
-    let tokens = json["data"]["total_tokens"].as_i64().unwrap_or(0);
-    Ok(ProviderData {
-        tokens,
-        cost: usage / 100.0, // OpenRouter returns cents
-    })
-}
-
-async fn test_anthropic_key(key: &str) -> Result<(), String> {
-    let client = reqwest::Client::new();
-    let resp = client
-        .get("https://api.anthropic.com/v1/models")
-        .header("x-api-key", key)
-        .header("anthropic-version", "2023-06-01")
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    if resp.status().is_success() {
-        Ok(())
-    } else {
-        Err(format!("Status: {}", resp.status()))
-    }
-}
-
-async fn query_anthropic(_key: &str) -> Result<ProviderData, String> {
-    // Anthropic doesn't have a simple usage API; return 0 for now
-    // In production, you'd parse billing dashboard or use their admin API
-    Ok(ProviderData { tokens: 0, cost: 0.0 })
-}
-
-async fn test_openai_key(key: &str) -> Result<(), String> {
-    let client = reqwest::Client::new();
-    let resp = client
-        .get("https://api.openai.com/v1/models")
-        .header("Authorization", format!("Bearer {}", key))
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    if resp.status().is_success() {
-        Ok(())
-    } else {
-        Err(format!("Status: {}", resp.status()))
-    }
-}
-
-async fn query_openai(key: &str) -> Result<ProviderData, String> {
-    let client = reqwest::Client::new();
-    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
-    let resp = client
-        .get(format!("https://api.openai.com/v1/usage?date={}", today))
-        .header("Authorization", format!("Bearer {}", key))
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
-    let json: Value = resp.json().await.map_err(|e| e.to_string())?;
-    let tokens = json["data"].as_array().map(|d| {
-        d.iter().map(|item| item["n_tokens"].as_i64().unwrap_or(0)).sum::<i64>()
-    }).unwrap_or(0);
-    let cost = json["total_usage"].as_f64().unwrap_or(0.0) / 100.0;
-    Ok(ProviderData { tokens, cost })
-}
-
-async fn test_opencode_zen_key(key: &str) -> Result<(), String> {
-    // Opencode Zen — placeholder; adjust URL when known
-    if key.len() > 10 {
-        Ok(())
-    } else {
-        Err("Key too short".to_string())
-    }
-}
-
-async fn query_opencode_zen(_key: &str) -> Result<ProviderData, String> {
-    // Placeholder — implement when Opencode Zen API is known
-    Ok(ProviderData { tokens: 0, cost: 0.0 })
-}
-
-async fn test_opencode_go_key(key: &str) -> Result<(), String> {
-    if key.len() > 10 {
-        Ok(())
-    } else {
-        Err("Key too short".to_string())
-    }
-}
-
-async fn query_opencode_go(_key: &str) -> Result<ProviderData, String> {
-    // Placeholder — implement when Opencode Go API is known
-    Ok(ProviderData { tokens: 0, cost: 0.0 })
 }
 
 // --- App entry ---
