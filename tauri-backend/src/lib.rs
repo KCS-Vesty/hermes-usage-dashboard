@@ -19,7 +19,13 @@ fn get_dashboard_data() -> Value {
 }
 
 #[tauri::command]
-fn get_usage_summary() -> String {
+async fn get_usage_summary() -> String {
+    // Try to get real data from configured sources
+    // For now, we'll fall back to mock data since configuration
+    // would need to be passed in via frontend state
+    // In a full implementation, the frontend would call
+    // the specific data source commands directly
+    
     let summary = build_usage_summary();
     serde_json::to_string(&summary).unwrap_or_default()
 }

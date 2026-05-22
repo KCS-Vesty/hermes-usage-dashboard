@@ -59,9 +59,9 @@ mod tests {
         assert_eq!(summary, deserialized);
     }
 
-    #[test]
-    fn test_get_usage_summary_command_valid_json() {
-        let result = crate::get_usage_summary();
+    #[tokio::test]
+    async fn test_get_usage_summary_command_valid_json() {
+        let result = crate::get_usage_summary().await;
         let parsed: UsageSummary = serde_json::from_str(&result).unwrap();
         assert_eq!(parsed.providers.len(), 5);
     }

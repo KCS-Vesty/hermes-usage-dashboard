@@ -40,6 +40,7 @@ pub struct UsageSummary {
 
 /// Build a usage summary from current data.
 /// Pure function — no I/O, easily testable.
+/// NOTE: This is legacy mock data for when no real data sources are configured.
 #[cfg(feature = "types")]
 pub fn build_usage_summary() -> UsageSummary {
     UsageSummary {
