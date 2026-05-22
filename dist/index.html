@@ -13,170 +13,536 @@
             padding: 24px;
             min-height: 100vh;
         }
-        h1 {
-            font-size: 24px;
-            font-weight: 700;
-            margin-bottom: 24px;
-            color: #fff;
+        h1 { font-size: 24px; font-weight: 700; margin-bottom: 24px; color: #fff; }
+        h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #ccc; }
+
+        /* --- Toolbar --- */
+        .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+        .toolbar-btn {
+            background: #1a1a2e; border: 1px solid #2a2a4a; color: #ccc;
+            padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px;
+            transition: all 0.15s;
         }
-        .stats {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-            margin-bottom: 24px;
+        .toolbar-btn:hover { background: #252545; color: #fff; }
+        .toolbar-btn.active { background: #2a2a5a; color: #fff; border-color: #60a5fa; }
+        .toolbar-btn.settings { margin-left: auto; }
+
+        /* --- Tabs --- */
+        .tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid #2a2a4a; padding-bottom: 0; }
+        .tab {
+            background: transparent; border: none; color: #888;
+            padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 500;
+            border-bottom: 2px solid transparent; transition: all 0.15s; margin-bottom: -1px;
         }
+        .tab:hover { color: #ccc; }
+        .tab.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+
+        /* --- Tab content --- */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* --- Stats --- */
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
         .stat-card {
-            background: #1a1a2e;
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid #2a2a4a;
+            background: #1a1a2e; border-radius: 12px; padding: 20px; border: 1px solid #2a2a4a;
         }
-        .stat-label {
-            font-size: 12px;
-            color: #888;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-        }
-        .stat-value {
-            font-size: 28px;
-            font-weight: 700;
-        }
+        .stat-label { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .stat-value { font-size: 28px; font-weight: 700; }
         .stat-value.tokens { color: #60a5fa; }
         .stat-value.cost { color: #4ade80; }
-        .table-container {
-            background: #1a1a2e;
-            border-radius: 12px;
-            border: 1px solid #2a2a4a;
-            overflow: hidden;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+
+        /* --- Table --- */
+        .table-container { background: #1a1a2e; border-radius: 12px; border: 1px solid #2a2a4a; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
         th {
-            text-align: left;
-            padding: 12px 16px;
-            font-size: 12px;
-            color: #888;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 1px solid #2a2a4a;
+            text-align: left; padding: 12px 16px; font-size: 12px; color: #888;
+            text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #2a2a4a;
         }
         th:last-child, td:last-child { text-align: right; }
-        td {
-            padding: 12px 16px;
-            border-bottom: 1px solid #1f1f35;
-        }
+        td { padding: 12px 16px; border-bottom: 1px solid #1f1f35; }
         tr:hover { background: #1f1f35; }
         td:first-child { font-weight: 600; color: #fff; }
         td:last-child { color: #4ade80; }
-        #status { color: #ffcc00; font-size: 14px; margin-bottom: 16px; }
-        #error { color: #ff4444; font-size: 14px; margin-bottom: 16px; }
-        .loading { text-align: center; padding: 40px; color: #666; }
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #888;
+
+        /* --- Status / Error --- */
+        .status-bar { font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .status-dot.green { background: #4ade80; }
+        .status-dot.yellow { background: #ffcc00; }
+        .status-dot.red { background: #ff4444; }
+        .status-dot.gray { background: #666; }
+        .error-msg { color: #ff4444; font-size: 13px; margin-bottom: 12px; padding: 8px 12px; background: #2a1010; border-radius: 6px; border: 1px solid #4a1515; }
+
+        /* --- Empty state --- */
+        .empty-state { text-align: center; padding: 60px 20px; color: #888; }
+        .empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+        .empty-state h2 { font-size: 18px; color: #ccc; margin-bottom: 8px; }
+        .empty-state p { font-size: 14px; color: #666; max-width: 400px; margin: 0 auto; }
+
+        /* --- Settings modal --- */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center;
         }
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #1a1a2e; border: 1px solid #2a2a4a; border-radius: 16px;
+            padding: 28px; width: 520px; max-width: 90vw; max-height: 80vh; overflow-y: auto;
         }
-        .empty-state h2 {
-            font-size: 18px;
-            color: #ccc;
-            margin-bottom: 8px;
+        .modal h2 { font-size: 20px; margin-bottom: 20px; color: #fff; }
+        .modal .close-btn {
+            float: right; background: none; border: none; color: #888; font-size: 20px;
+            cursor: pointer; padding: 4px 8px; border-radius: 4px;
         }
-        .empty-state p {
-            font-size: 14px;
-            color: #666;
-            max-width: 400px;
-            margin: 0 auto;
+        .modal .close-btn:hover { color: #fff; background: #2a2a4a; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; color: #888; margin-bottom: 6px; }
+        .form-group input, .form-group select {
+            width: 100%; padding: 10px 12px; background: #0f0f1a; border: 1px solid #2a2a4a;
+            border-radius: 8px; color: #e0e0e0; font-size: 14px;
+        }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #60a5fa; }
+        .form-group .hint { font-size: 11px; color: #666; margin-top: 4px; }
+        .form-section { margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid #2a2a4a; }
+        .form-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .form-section-title { font-size: 14px; font-weight: 600; color: #60a5fa; margin-bottom: 12px; }
+        .save-btn {
+            background: #60a5fa; color: #000; border: none; padding: 10px 24px;
+            border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;
+        }
+        .save-btn:hover { background: #80b8ff; }
+        .test-btn {
+            background: #2a2a4a; color: #ccc; border: 1px solid #3a3a5a; padding: 6px 14px;
+            border-radius: 6px; cursor: pointer; font-size: 12px; margin-left: 8px;
+        }
+        .test-btn:hover { background: #3a3a5a; color: #fff; }
+        .test-result { font-size: 12px; margin-top: 6px; }
+        .test-result.ok { color: #4ade80; }
+        .test-result.fail { color: #ff4444; }
+
+        /* --- Comparison view --- */
+        .comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .comparison-panel { background: #1a1a2e; border-radius: 12px; border: 1px solid #2a2a4a; padding: 16px; }
+        .comparison-panel h3 { font-size: 14px; color: #888; margin-bottom: 12px; }
+        .comparison-panel .stat-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #1f1f35; font-size: 13px; }
+        .comparison-panel .stat-row:last-child { border-bottom: none; }
+        .comparison-panel .stat-name { color: #aaa; }
+        .comparison-panel .stat-val { color: #fff; font-weight: 600; }
+        .comparison-diff { text-align: center; padding: 8px; font-size: 13px; color: #888; }
+        .comparison-diff .diff-val { font-weight: 700; }
+        .comparison-diff .diff-val.positive { color: #4ade80; }
+        .comparison-diff .diff-val.negative { color: #ff4444; }
+
+        @media (max-width: 768px) {
+            .stats { grid-template-columns: 1fr; }
+            .comparison-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <h1>Hermes Usage Dashboard</h1>
-    <div id="status">Loading...</div>
-    <div id="error"></div>
-    <div id="content">
-        <div class="loading">Loading usage data...</div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+        <button class="toolbar-btn active" id="btn-refresh" onclick="refreshData()">↻ Refresh</button>
+        <button class="toolbar-btn" id="btn-auto" onclick="toggleAutoRefresh()">⟳ Auto-refresh: OFF</button>
+        <button class="toolbar-btn settings" onclick="openSettings()">⚙ Settings</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('influxdb')">InfluxDB Data</button>
+        <button class="tab" onclick="switchTab('providers')">Provider APIs</button>
+        <button class="tab" onclick="switchTab('compare')">Compare</button>
+    </div>
+
+    <!-- Status -->
+    <div class="status-bar" id="status-bar">
+        <span class="status-dot gray" id="status-dot"></span>
+        <span id="status-text">Loading...</span>
+    </div>
+    <div id="error-container"></div>
+
+    <!-- Tab: InfluxDB -->
+    <div class="tab-content active" id="tab-influxdb">
+        <div id="influxdb-content"><div class="empty-state"><div class="empty-state-icon">📊</div><h2>No InfluxDB Data</h2><p>Configure your InfluxDB connection in Settings to pull real usage data.</p></div></div>
+    </div>
+
+    <!-- Tab: Provider APIs -->
+    <div class="tab-content" id="tab-providers">
+        <div id="providers-content"><div class="empty-state"><div class="empty-state-icon">🔌</div><h2>No Provider Data</h2><p>Configure your API keys in Settings to pull data directly from providers.</p></div></div>
+    </div>
+
+    <!-- Tab: Compare -->
+    <div class="tab-content" id="tab-compare">
+        <div id="compare-content"><div class="empty-state"><div class="empty-state-icon">⚖️</div><h2>Comparison</h2><p>Data from both sources is needed for comparison. Configure at least one data source in Settings.</p></div></div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settings-modal">
+        <div class="modal">
+            <button class="close-btn" onclick="closeSettings()">✕</button>
+            <h2>Settings</h2>
+
+            <div class="form-section">
+                <div class="form-section-title">InfluxDB Connection</div>
+                <div class="form-group">
+                    <label>InfluxDB URL</label>
+                    <input type="text" id="influx-url" placeholder="http://127.0.0.1:8086" value="http://127.0.0.1:8086">
+                    <div class="hint">Your InfluxDB instance URL</div>
+                </div>
+                <div class="form-group">
+                    <label>Organization</label>
+                    <input type="text" id="influx-org" placeholder="hermes" value="hermes">
+                </div>
+                <div class="form-group">
+                    <label>Bucket</label>
+                    <input type="text" id="influx-bucket" placeholder="hermes_usage" value="hermes_usage">
+                </div>
+                <div class="form-group">
+                    <label>API Token</label>
+                    <input type="password" id="influx-token" placeholder="your-influxdb-token">
+                    <div class="hint">InfluxDB v2 authentication token</div>
+                </div>
+                <button class="test-btn" onclick="testInfluxConnection()">Test Connection</button>
+                <div class="test-result" id="influx-test-result"></div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Provider API Keys</div>
+                <div class="form-group">
+                    <label>OpenRouter API Key</label>
+                    <input type="password" id="key-openrouter" placeholder="sk-or-...">
+                    <div class="hint">From <a href="https://openrouter.ai/keys" target="_blank" style="color:#60a5fa">openrouter.ai/keys</a></div>
+                </div>
+                <div class="form-group">
+                    <label>Anthropic API Key</label>
+                    <input type="password" id="key-anthropic" placeholder="sk-ant-...">
+                    <div class="hint">From <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:#60a5fa">console.anthropic.com</a></div>
+                </div>
+                <div class="form-group">
+                    <label>OpenAI API Key</label>
+                    <input type="password" id="key-openai" placeholder="sk-...">
+                    <div class="hint">From <a href="https://platform.openai.com/api-keys" target="_blank" style="color:#60a5fa">platform.openai.com</a></div>
+                </div>
+                <div class="form-group">
+                    <label>Opencode Zen API Key</label>
+                    <input type="password" id="key-opencode-zen" placeholder="opencode zen API key">
+                </div>
+                <div class="form-group">
+                    <label>Opencode Go API Key</label>
+                    <input type="password" id="key-opencode-go" placeholder="opencode go API key">
+                </div>
+                <button class="test-btn" onclick="testProviderConnections()">Test Provider Keys</button>
+                <div class="test-result" id="providers-test-result"></div>
+            </div>
+
+            <div class="form-section">
+                <div class="form-section-title">Data Source Preference</div>
+                <div class="form-group">
+                    <label>Primary Data Source</label>
+                    <select id="primary-source">
+                        <option value="influxdb">InfluxDB (Hermes-written data)</option>
+                        <option value="providers">Provider APIs (direct from providers)</option>
+                        <option value="auto">Auto (try InfluxDB first, fall back to providers)</option>
+                    </select>
+                    <div class="hint">Which source to use when both are configured</div>
+                </div>
+            </div>
+
+            <button class="save-btn" onclick="saveSettings()">Save Settings</button>
+        </div>
     </div>
 
     <script>
-        const statusEl = document.getElementById('status');
-        const errorEl = document.getElementById('error');
-        const contentEl = document.getElementById('content');
+        // --- State ---
+        let settings = {
+            influx: { url: 'http://127.0.0.1:8086', org: 'hermes', bucket: 'hermes_usage', token: '' },
+            providers: { openrouter: '', anthropic: '', openai: '', 'opencode-zen': '', 'opencode-go': '' },
+            primarySource: 'auto'
+        };
+        let influxData = null;
+        let providerData = null;
+        let autoRefreshInterval = null;
+        let currentTab = 'influxdb';
 
-        function showError(msg) {
-            statusEl.textContent = 'Error';
-            errorEl.textContent = msg;
-            contentEl.innerHTML = '';
-            console.error(msg);
+        // --- Load saved settings ---
+        function loadSettings() {
+            try {
+                const saved = localStorage.getItem('hermes-dashboard-settings');
+                if (saved) {
+                    settings = { ...settings, ...JSON.parse(saved) };
+                }
+            } catch (e) { console.warn('Failed to load settings', e); }
+            // Fill form fields
+            document.getElementById('influx-url').value = settings.influx.url;
+            document.getElementById('influx-org').value = settings.influx.org;
+            document.getElementById('influx-bucket').value = settings.influx.bucket;
+            document.getElementById('influx-token').value = settings.influx.token;
+            for (const [key, val] of Object.entries(settings.providers)) {
+                const el = document.getElementById('key-' + key);
+                if (el) el.value = val;
+            }
+            document.getElementById('primary-source').value = settings.primarySource;
         }
 
-        function renderDashboard(data) {
+        function saveSettings() {
+            settings.influx.url = document.getElementById('influx-url').value.trim();
+            settings.influx.org = document.getElementById('influx-org').value.trim();
+            settings.influx.bucket = document.getElementById('influx-bucket').value.trim();
+            settings.influx.token = document.getElementById('influx-token').value.trim();
+            for (const key of Object.keys(settings.providers)) {
+                const el = document.getElementById('key-' + key);
+                if (el) settings.providers[key] = el.value.trim();
+            }
+            settings.primarySource = document.getElementById('primary-source').value;
+            localStorage.setItem('hermes-dashboard-settings', JSON.stringify(settings));
+            closeSettings();
+            refreshData();
+        }
+
+        // --- Settings modal ---
+        function openSettings() { document.getElementById('settings-modal').classList.add('open'); }
+        function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
+
+        // --- Tabs ---
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+            if (tab === 'compare') renderComparison();
+        }
+
+        // --- Status ---
+        function setStatus(text, color) {
+            document.getElementById('status-text').textContent = text;
+            const dot = document.getElementById('status-dot');
+            dot.className = 'status-dot ' + (color || 'gray');
+        }
+        function showError(msg) {
+            document.getElementById('error-container').innerHTML = `<div class="error-msg">${escapeHtml(msg)}</div>`;
+        }
+        function clearError() {
+            document.getElementById('error-container').innerHTML = '';
+        }
+
+        // --- Data rendering ---
+        function renderDashboard(data, targetId) {
             const providers = data.providers || [];
             const totalTokens = data.total_tokens || 0;
             const totalCost = data.total_cost_usd || 0;
+            const el = document.getElementById(targetId);
 
-            // Check if there's actually any data
             const hasData = providers.length > 0 || totalTokens > 0 || totalCost > 0;
-
             if (!hasData) {
-                statusEl.textContent = 'No data available';
-                statusEl.style.color = '#ff8800';
-                contentEl.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📊</div>
-                        <h2>No Usage Data</h2>
-                        <p>No usage data has been recorded yet. Data will appear here once usage events are captured.</p>
-                    </div>
-                `;
+                el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📊</div><h2>No Data</h2><p>No usage data available from this source.</p></div>`;
                 return;
             }
-
-            statusEl.textContent = 'Connected';
-            statusEl.style.color = '#4ade80';
 
             let rows = '';
             for (const p of providers) {
                 const cost = typeof p.cost_usd === 'number' ? '$' + p.cost_usd.toFixed(4) : p.cost_usd;
                 const tokens = typeof p.tokens_used === 'number' ? p.tokens_used.toLocaleString() : p.tokens_used;
-                rows += `<tr>
-                    <td>${escapeHtml(p.name)}</td>
-                    <td>${tokens}</td>
-                    <td>${cost}</td>
-                </tr>`;
+                rows += `<tr><td>${escapeHtml(p.name)}</td><td>${tokens}</td><td>${cost}</td></tr>`;
             }
 
-            contentEl.innerHTML = `
+            el.innerHTML = `
                 <div class="stats">
-                    <div class="stat-card">
-                        <div class="stat-label">Total Tokens</div>
-                        <div class="stat-value tokens">${totalTokens.toLocaleString()}</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Total Cost</div>
-                        <div class="stat-value cost">$${totalCost.toFixed(2)}</div>
-                    </div>
+                    <div class="stat-card"><div class="stat-label">Total Tokens</div><div class="stat-value tokens">${totalTokens.toLocaleString()}</div></div>
+                    <div class="stat-card"><div class="stat-label">Total Cost</div><div class="stat-value cost">$${totalCost.toFixed(2)}</div></div>
                 </div>
                 <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Provider</th>
-                                <th>Tokens</th>
-                                <th>Cost</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rows}
-                        </tbody>
-                    </table>
+                    <table><thead><tr><th>Provider</th><th>Tokens</th><th>Cost</th></tr></thead>
+                    <tbody>${rows}</tbody></table>
+                </div>`;
+        }
+
+        function renderComparison() {
+            const el = document.getElementById('compare-content');
+            if (!influxData && !providerData) {
+                el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚖️</div><h2>Comparison</h2><p>Data from both sources is needed for comparison. Configure at least one data source in Settings and refresh.</p></div>`;
+                return;
+            }
+            const iTokens = (influxData?.total_tokens) || 0;
+            const pTokens = (providerData?.total_tokens) || 0;
+            const iCost = (influxData?.total_cost_usd) || 0;
+            const pCost = (providerData?.total_cost_usd) || 0;
+            const tokenDiff = pTokens - iTokens;
+            const costDiff = pCost - iCost;
+
+            function diffHtml(diff, prefix) {
+                if (diff === 0) return `<span class="diff-val">${prefix}0</span>`;
+                const sign = diff > 0 ? '+' : '';
+                const cls = diff > 0 ? 'positive' : 'negative';
+                return `<span class="diff-val ${cls}">${sign}${prefix}${diff.toLocaleString()}</span>`;
+            }
+
+            function sidePanel(data, title) {
+                if (!data) return `<div class="comparison-panel"><h3>${title}</h3><p style="color:#666;font-size:13px;">No data</p></div>`;
+                const providers = data.providers || [];
+                let rows = '';
+                for (const p of providers) {
+                    rows += `<div class="stat-row"><span class="stat-name">${escapeHtml(p.name)}</span><span class="stat-val">${(p.tokens_used||0).toLocaleString()} tok · $${(p.cost_usd||0).toFixed(4)}</span></div>`;
+                }
+                return `<div class="comparison-panel"><h3>${title}</h3>${rows||'<p style="color:#666;font-size:13px;">No providers</p>'}</div>`;
+            }
+
+            el.innerHTML = `
+                <div class="comparison-grid">
+                    ${sidePanel(influxData, '⬇ InfluxDB')}
+                    ${sidePanel(providerData, '🔌 Provider APIs')}
                 </div>
-            `;
+                <div class="comparison-diff" style="margin-top:16px;">
+                    <div>Token difference: ${diffHtml(tokenDiff, '')}</div>
+                    <div>Cost difference: ${diffHtml(costDiff, '$')}</div>
+                    <div style="margin-top:8px;color:#666;font-size:12px;">Positive = Provider API reports more · Negative = InfluxDB reports more</div>
+                </div>`;
+        }
+
+        // --- Data fetching ---
+        async function fetchInfluxData() {
+            if (!settings.influx.token) return null;
+            if (!window.__TAURI__) return null;
+            try {
+                const result = await window.__TAURI__.invoke('query_influxdb', {
+                    url: settings.influx.url,
+                    org: settings.influx.org,
+                    bucket: settings.influx.bucket,
+                    token: settings.influx.token
+                });
+                return typeof result === 'string' ? JSON.parse(result) : result;
+            } catch (e) {
+                console.warn('InfluxDB query failed:', e);
+                return null;
+            }
+        }
+
+        async function fetchProviderData() {
+            const keys = settings.providers;
+            const hasAnyKey = Object.values(keys).some(k => k.trim());
+            if (!hasAnyKey) return null;
+            if (!window.__TAURI__) return null;
+            try {
+                const result = await window.__TAURI__.invoke('query_providers', { keys });
+                return typeof result === 'string' ? JSON.parse(result) : result;
+            } catch (e) {
+                console.warn('Provider query failed:', e);
+                return null;
+            }
+        }
+
+        async function refreshData() {
+            clearError();
+            setStatus('Refreshing...', 'yellow');
+
+            if (window.__TAURI__) {
+                // Running inside Tauri — try real data sources
+                const [influx, providers] = await Promise.all([
+                    fetchInfluxData(),
+                    fetchProviderData()
+                ]);
+                influxData = influx;
+                providerData = providers;
+
+                // Determine which data to show based on primary source
+                let primary = null;
+                if (settings.primarySource === 'influxdb') {
+                    primary = influx || providers;
+                } else if (settings.primarySource === 'providers') {
+                    primary = providers || influx;
+                } else {
+                    primary = influx || providers;
+                }
+
+                if (primary) {
+                    renderDashboard(primary, 'influxdb-content');
+                    renderDashboard(providers || influx || { providers: [], total_tokens: 0, total_cost_usd: 0 }, 'providers-content');
+                    setStatus('Connected — live data', 'green');
+                } else {
+                    // No real data available — show empty states
+                    document.getElementById('influxdb-content').innerHTML = `<div class="empty-state"><div class="empty-state-icon">📊</div><h2>No InfluxDB Data</h2><p>${settings.influx.token ? 'Could not connect. Check your settings.' : 'Configure InfluxDB in Settings.'}</p></div>`;
+                    document.getElementById('providers-content').innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔌</div><h2>No Provider Data</h2><p>${Object.values(settings.providers).some(k=>k) ? 'Could not connect. Check your API keys.' : 'Configure provider API keys in Settings.'}</p></div>`;
+                    setStatus('No data sources available', 'yellow');
+                }
+            } else {
+                // Browser mode — mock data
+                const mock = {
+                    providers: [
+                        { name: 'openrouter', tokens_used: 15000, cost_usd: 0.45 },
+                        { name: 'anthropic', tokens_used: 8000, cost_usd: 0.24 },
+                        { name: 'openai', tokens_used: 12000, cost_usd: 0.36 },
+                        { name: 'opencode zen', tokens_used: 5000, cost_usd: 0.15 },
+                        { name: 'opencode go', tokens_used: 3000, cost_usd: 0.09 }
+                    ],
+                    total_tokens: 38000, total_cost_usd: 1.29
+                };
+                renderDashboard(mock, 'influxdb-content');
+                renderDashboard(mock, 'providers-content');
+                setStatus('Browser mode — mock data', 'yellow');
+            }
+            renderComparison();
+        }
+
+        function toggleAutoRefresh() {
+            const btn = document.getElementById('btn-auto');
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                btn.textContent = '⟳ Auto-refresh: OFF';
+                btn.classList.remove('active');
+            } else {
+                autoRefreshInterval = setInterval(refreshData, 30000);
+                btn.textContent = '⟳ Auto-refresh: 30s';
+                btn.classList.add('active');
+            }
+        }
+
+        // --- Connection tests ---
+        async function testInfluxConnection() {
+            const resultEl = document.getElementById('influx-test-result');
+            resultEl.textContent = 'Testing...';
+            resultEl.className = 'test-result';
+            if (!window.__TAURI__) {
+                resultEl.textContent = '⚠ Tauri not available — cannot test from browser';
+                resultEl.className = 'test-result fail';
+                return;
+            }
+            try {
+                const url = document.getElementById('influx-url').value.trim();
+                const org = document.getElementById('influx-org').value.trim();
+                const token = document.getElementById('influx-token').value.trim();
+                if (!token) { resultEl.textContent = '⚠ Please enter an API token'; resultEl.className = 'test-result fail'; return; }
+                const res = await window.__TAURI__.invoke('test_influx_connection', { url, org, token });
+                if (res.ok) { resultEl.textContent = `✓ Connected (${res.bucket_count || '?'} buckets found)`; resultEl.className = 'test-result ok'; }
+                else { resultEl.textContent = `✗ ${res.error || 'Connection failed'}`; resultEl.className = 'test-result fail'; }
+            } catch (e) { resultEl.textContent = `✗ ${e.message}`; resultEl.className = 'test-result fail'; }
+        }
+
+        async function testProviderConnections() {
+            const resultEl = document.getElementById('providers-test-result');
+            resultEl.textContent = 'Testing...';
+            resultEl.className = 'test-result';
+            if (!window.__TAURI__) {
+                resultEl.textContent = '⚠ Tauri not available — cannot test from browser';
+                resultEl.className = 'test-result fail';
+                return;
+            }
+            try {
+                const keys = {};
+                for (const key of Object.keys(settings.providers)) {
+                    const val = document.getElementById('key-' + key)?.value.trim();
+                    if (val) keys[key] = val;
+                }
+                if (Object.keys(keys).length === 0) { resultEl.textContent = '⚠ Please enter at least one API key'; resultEl.className = 'test-result fail'; return; }
+                const res = await window.__TAURI__.invoke('test_provider_keys', { keys });
+                const ok = (res.ok || []).length;
+                const fail = (res.failed || []).length;
+                if (ok > 0 && fail === 0) { resultEl.textContent = `✓ All ${ok} key(s) valid`; resultEl.className = 'test-result ok'; }
+                else if (ok > 0) { resultEl.textContent = `⚠ ${ok} valid, ${fail} failed: ${(res.failed||[]).join(', ')}`; resultEl.className = 'test-result fail'; }
+                else { resultEl.textContent = `✗ All keys failed: ${(res.failed||[]).join(', ')}`; resultEl.className = 'test-result fail'; }
+            } catch (e) { resultEl.textContent = `✗ ${e.message}`; resultEl.className = 'test-result fail'; }
         }
 
         function escapeHtml(str) {
@@ -185,36 +551,9 @@
             return div.innerHTML;
         }
 
-        async function loadData() {
-            // Check if running inside Tauri
-            if (window.__TAURI__) {
-                statusEl.textContent = 'Connecting to Tauri backend...';
-                try {
-                    const result = await window.__TAURI__.invoke('get_usage_summary');
-                    const data = typeof result === 'string' ? JSON.parse(result) : result;
-                    renderDashboard(data);
-                } catch (e) {
-                    showError('Tauri invoke failed: ' + e.message);
-                }
-            } else {
-                // Running in plain browser — use mock data
-                statusEl.textContent = 'Running in browser mode (mock data)';
-                statusEl.style.color = '#ffcc00';
-                renderDashboard({
-                    providers: [
-                        { name: 'openrouter', tokens_used: 15000, cost_usd: 0.45 },
-                        { name: 'anthropic', tokens_used: 8000, cost_usd: 0.24 },
-                        { name: 'openai', tokens_used: 12000, cost_usd: 0.36 },
-                        { name: 'opencode zen', tokens_used: 5000, cost_usd: 0.15 },
-                        { name: 'opencode go', tokens_used: 3000, cost_usd: 0.09 }
-                    ],
-                    total_tokens: 38000,
-                    total_cost_usd: 1.29
-                });
-            }
-        }
-
-        loadData();
+        // --- Init ---
+        loadSettings();
+        refreshData();
     </script>
 </body>
 </html>
