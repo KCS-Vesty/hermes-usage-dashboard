@@ -505,19 +505,20 @@
             resultEl.textContent = 'Testing...';
             resultEl.className = 'test-result';
             if (!window.__TAURI__) {
-                resultEl.textContent = '⚠ Tauri not available — cannot test from browser';
+                resultEl.textContent = '⚠ Not running in Tauri — open the app to test';
                 resultEl.className = 'test-result fail';
                 return;
             }
             try {
                 const url = document.getElementById('influx-url').value.trim();
                 const org = document.getElementById('influx-org').value.trim();
+                const bucket = document.getElementById('influx-bucket').value.trim();
                 const token = document.getElementById('influx-token').value.trim();
                 if (!token) { resultEl.textContent = '⚠ Please enter an API token'; resultEl.className = 'test-result fail'; return; }
-                const res = await window.__TAURI__.invoke('test_influx_connection', { url, org, token });
-                if (res.ok) { resultEl.textContent = `✓ Connected (${res.bucket_count || '?'} buckets found)`; resultEl.className = 'test-result ok'; }
+                const res = await window.__TAURI__.invoke('test_influx_connection', { url, org, bucket, token });
+                if (res.ok) { resultEl.textContent = `✓ Connected (status ${res.status})`; resultEl.className = 'test-result ok'; }
                 else { resultEl.textContent = `✗ ${res.error || 'Connection failed'}`; resultEl.className = 'test-result fail'; }
-            } catch (e) { resultEl.textContent = `✗ ${e.message}`; resultEl.className = 'test-result fail'; }
+            } catch (e) { resultEl.textContent = `✗ ${e.message || e}`; resultEl.className = 'test-result fail'; }
         }
 
         async function testProviderConnections() {
@@ -525,7 +526,7 @@
             resultEl.textContent = 'Testing...';
             resultEl.className = 'test-result';
             if (!window.__TAURI__) {
-                resultEl.textContent = '⚠ Tauri not available — cannot test from browser';
+                resultEl.textContent = '⚠ Not running in Tauri — open the app to test';
                 resultEl.className = 'test-result fail';
                 return;
             }
@@ -537,12 +538,12 @@
                 }
                 if (Object.keys(keys).length === 0) { resultEl.textContent = '⚠ Please enter at least one API key'; resultEl.className = 'test-result fail'; return; }
                 const res = await window.__TAURI__.invoke('test_provider_keys', { keys });
-                const ok = (res.ok || []).length;
-                const fail = (res.failed || []).length;
-                if (ok > 0 && fail === 0) { resultEl.textContent = `✓ All ${ok} key(s) valid`; resultEl.className = 'test-result ok'; }
-                else if (ok > 0) { resultEl.textContent = `⚠ ${ok} valid, ${fail} failed: ${(res.failed||[]).join(', ')}`; resultEl.className = 'test-result fail'; }
-                else { resultEl.textContent = `✗ All keys failed: ${(res.failed||[]).join(', ')}`; resultEl.className = 'test-result fail'; }
-            } catch (e) { resultEl.textContent = `✗ ${e.message}`; resultEl.className = 'test-result fail'; }
+                const okList = res.ok || [];
+                const failList = res.failed || [];
+                if (okList.length > 0 && failList.length === 0) { resultEl.textContent = `✓ All ${okList.length} key(s) valid: ${okList.join(', ')}`; resultEl.className = 'test-result ok'; }
+                else if (okList.length > 0) { resultEl.textContent = `⚠ ${okList.length} valid (${okList.join(', ')}), ${failList.length} failed: ${failList.map(f => f.name || f.error || JSON.stringify(f)).join(', ')}`; resultEl.className = 'test-result fail'; }
+                else { resultEl.textContent = `✗ All keys failed: ${failList.map(f => f.name || f.error || JSON.stringify(f)).join(', ')}`; resultEl.className = 'test-result fail'; }
+            } catch (e) { resultEl.textContent = `✗ ${e.message || e}`; resultEl.className = 'test-result fail'; }
         }
 
         function escapeHtml(str) {
