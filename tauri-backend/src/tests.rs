@@ -2,6 +2,7 @@
 mod tests {
     use hermes_monitor::{ProviderUsage, UsageSummary};
     use hermes_monitor::build_usage_summary;
+    use hermes_monitor::build_usage_summary_from_providers;
     use serde_json::Value;
 
     // --- Command existence & response shape tests ---
@@ -285,5 +286,19 @@ mod tests {
         // This line won't compile if someone renames it back to _cmd
         let check: fn(crate::InfluxConfig) -> _ = crate::query_influxdb;
         let _ = check;
+    }
+
+    /// Verify build_usage_summary_from_providers is accessible from hermes_monitor crate.
+    /// Would catch if the crate-level re-export is removed from monitor/src/lib.rs.
+    #[test]
+    fn test_build_usage_summary_from_providers_works_cross_crate() {
+        let providers = vec![
+            ProviderUsage { name: "x".into(), tokens_used: 100, cost_usd: 0.01 },
+            ProviderUsage { name: "y".into(), tokens_used: 200, cost_usd: 0.02 },
+        ];
+        let summary = build_usage_summary_from_providers(providers);
+        assert_eq!(summary.total_tokens, 300);
+        assert!((summary.total_cost_usd - 0.03).abs() < f64::EPSILON);
+        assert_eq!(summary.providers.len(), 2);
     }
 }

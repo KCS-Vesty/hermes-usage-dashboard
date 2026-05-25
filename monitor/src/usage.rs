@@ -75,3 +75,17 @@ pub fn build_usage_summary() -> UsageSummary {
         total_cost_usd: 1.29,
     }
 }
+
+/// Build a usage summary from a list of provider usages.
+/// This function is pure and can be used to construct a UsageSummary from
+/// data fetched from any source (InfluxDB, provider APIs, etc.).
+#[cfg(feature = "types")]
+pub fn build_usage_summary_from_providers(providers: Vec<ProviderUsage>) -> UsageSummary {
+    let total_tokens = providers.iter().map(|p| p.tokens_used).sum();
+    let total_cost_usd = providers.iter().map(|p| p.cost_usd).sum();
+    UsageSummary {
+        providers,
+        total_tokens,
+        total_cost_usd,
+    }
+}

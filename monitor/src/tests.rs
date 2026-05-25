@@ -182,4 +182,49 @@ mod tests {
         };
         assert_eq!(rec.remaining, 0);
     }
+
+    // --- build_usage_summary_from_providers tests ---
+
+    #[cfg(feature = "types")]
+    #[test]
+    fn test_build_summary_from_providers() {
+        use crate::usage::{ProviderUsage, build_usage_summary_from_providers};
+        let providers = vec![
+            ProviderUsage { name: "a".into(), tokens_used: 1000, cost_usd: 0.01 },
+            ProviderUsage { name: "b".into(), tokens_used: 2000, cost_usd: 0.02 },
+        ];
+        let summary = build_usage_summary_from_providers(providers);
+        assert_eq!(summary.total_tokens, 3000);
+        assert!((summary.total_cost_usd - 0.03).abs() < f64::EPSILON);
+        assert_eq!(summary.providers.len(), 2);
+    }
+
+    #[cfg(feature = "types")]
+    #[test]
+    fn test_build_summary_from_empty() {
+        use crate::usage::build_usage_summary_from_providers;
+        let summary = build_usage_summary_from_providers(vec![]);
+        assert_eq!(summary.total_tokens, 0);
+        assert!((summary.total_cost_usd).abs() < f64::EPSILON);
+        assert_eq!(summary.providers.len(), 0);
+    }
+
+    // --- Crate-level re-export tests ---
+    // These test that the `pub use` statements in `lib.rs` are working.
+
+    #[cfg(feature = "types")]
+    #[test]
+    fn test_build_summary_via_crate_reexport() {
+        // Must be callable via `crate::build_usage_summary_from_providers`
+        // thanks to `lib.rs` re-export
+        let providers = vec![
+            crate::usage::ProviderUsage {
+                name: "test".into(),
+                tokens_used: 500,
+                cost_usd: 0.01,
+            },
+        ];
+        let summary = crate::build_usage_summary_from_providers(providers);
+        assert_eq!(summary.total_tokens, 500);
+    }
 }

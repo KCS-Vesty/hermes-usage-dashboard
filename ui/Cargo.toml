@@ -6,11 +6,6 @@ edition = "2024"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
-[profile.release]
-opt-level = 3
-strip = true
-debug = false
-
 [dependencies]
 hermes-monitor = { path = "../monitor", default-features = false, features = ["types"] }
 yew = { version = "0.21", features = ["csr"] }

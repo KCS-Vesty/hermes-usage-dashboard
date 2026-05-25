@@ -5,7 +5,7 @@ pub mod error;
 // Re-export the domain types at the crate root
 pub use usage::{RateLimitRecord, UsageRecord};
 #[cfg(feature = "types")]
-pub use usage::{ProviderUsage, UsageSummary, build_usage_summary};
+pub use usage::{ProviderUsage, UsageSummary, build_usage_summary, build_usage_summary_from_providers};
 #[cfg(feature = "types")]
 pub use error::{DashboardError, Result};
 

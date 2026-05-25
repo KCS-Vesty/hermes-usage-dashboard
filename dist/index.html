@@ -265,8 +265,7 @@
                 event: window.__TAURI_INTERNALS__.event,
             };
         }
-        console.log('[Hermes] Tauri globals:', Object.keys(window).filter(k => k.startsWith('__TAURI')));
-        console.log('[Hermes] __TAURI__ available:', typeof window.__TAURI__?.invoke === 'function');
+        console.log('[Hermes] Tauri bridge active:', typeof window.__TAURI__?.invoke === 'function');
 
         // --- State ---
         let settings = {
