@@ -1,5 +1,5 @@
 {
-  "productName": "hermes-usage-dashboard",
+  "productName": "Hermes Usage Dashboard",
   "version": "0.1.0",
   "identifier": "com.hermes.dashboard",
   "build": {
@@ -13,7 +13,7 @@
         "title": "Hermes Usage Dashboard",
         "width": 1024,
         "height": 768,
-        "devtools": true
+        "devtools": false
       }
     ],
     "security": {
@@ -21,6 +21,16 @@
     }
   },
   "bundle": {
-    "active": false
+    "active": true,
+    "targets": "nsis",
+    "icon": [
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "wix": null,
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
   }
 }
