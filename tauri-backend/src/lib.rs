@@ -2,7 +2,7 @@ mod influx;
 mod providers;
 
 use hermes_monitor::build_usage_summary;
-use influx::{query_influxdb, InfluxConfig};
+use influx::{query_influxdb_internal, InfluxConfig};
 use providers::ProviderConfig;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -46,8 +46,8 @@ async fn test_influx_connection(config: InfluxConfig) -> Result<Value, String> {
 }
 
 #[tauri::command]
-async fn query_influxdb_cmd(config: InfluxConfig) -> Result<Value, String> {
-    query_influxdb(&config).await
+async fn query_influxdb(config: InfluxConfig) -> Result<Value, String> {
+    query_influxdb_internal(&config).await
 }
 
 // --- Provider API commands ---
@@ -119,7 +119,7 @@ pub fn run() {
             get_dashboard_data,
             get_usage_summary,
             test_influx_connection,
-            query_influxdb_cmd,
+            query_influxdb,
             test_provider_keys,
             query_providers,
         ])

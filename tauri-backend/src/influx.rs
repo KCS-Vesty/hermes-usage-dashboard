@@ -13,7 +13,7 @@ pub struct InfluxConfig {
 }
 
 /// Query InfluxDB for usage data from the last 24 hours, grouped by provider.
-pub async fn query_influxdb(config: &InfluxConfig) -> Result<Value, String> {
+pub async fn query_influxdb_internal(config: &InfluxConfig) -> Result<Value, String> {
     let client = reqwest::Client::new();
     let query_url = format!("{}/api/v2/query", config.url);
 
