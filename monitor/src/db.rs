@@ -50,14 +50,22 @@ pub fn format_rate_lines(records: &[RateLimitRecord]) -> Vec<String> {
         .collect()
 }
 
-pub async fn start_writer() {
-    let client = Client::new(
-        "http://127.0.0.1:8086",
-        "hermes",
-        "hermes-token",
-    );
-    let bucket = "hermes_usage";
-    let org = "hermes";
+/// InfluxDB connection configuration.
+pub struct InfluxDbConfig {
+    pub url: String,
+    pub org: String,
+    pub bucket: String,
+    pub token: String,
+}
+
+/// Start the InfluxDB writer loop. Drains usage and rate-limit records from
+/// the collector and writes them to InfluxDB in batches.
+///
+/// Runs forever in a loop — designed to be spawned as a background task.
+pub async fn start_writer(config: InfluxDbConfig) {
+    let client = Client::new(&config.url, &config.org, &config.token);
+    let bucket = &config.bucket;
+    let org = &config.org;
 
     loop {
         sleep(Duration::from_secs(2)).await;
@@ -74,6 +82,16 @@ pub async fn start_writer() {
             write_batch(&client, org, bucket, lines.join("\n")).await;
         }
     }
+}
+
+/// Write a single usage record to InfluxDB immediately (non-looping).
+pub async fn write_usage_record(config: &InfluxDbConfig, rec: UsageRecord) -> Result<(), String> {
+    let client = Client::new(&config.url, &config.org, &config.token);
+    let lines = format_usage_lines(&[rec]);
+    client
+        .write_line_protocol(&config.org, &config.bucket, lines.join("\n"))
+        .await
+        .map_err(|e| format!("InfluxDB write failed: {}", e))
 }
 
 /// Write a batch of line protocol to InfluxDB, logging errors instead of silently dropping them.
@@ -199,7 +217,6 @@ mod format_tests {
         }];
         let lines = format_usage_lines(&records);
         assert_eq!(lines.len(), 1);
-        // Spaces in tag values must be escaped with backslash per InfluxDB line protocol
         assert!(lines[0].contains("provider=my\\ provider"), "provider not escaped: {}", lines[0]);
         assert!(lines[0].contains("model=claude\\ 3.5"), "model not escaped: {}", lines[0]);
     }

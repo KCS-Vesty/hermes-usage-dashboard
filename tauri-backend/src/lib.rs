@@ -2,12 +2,18 @@ mod influx;
 mod providers;
 
 use hermes_monitor::build_usage_summary;
+use hermes_monitor::{InfluxDbConfig, start_writer, write_usage_record};
+use hermes_monitor::UsageRecord;
 use influx::{query_influxdb_internal, InfluxConfig};
 use providers::ProviderConfig;
 use serde_json::Value;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Emitter;
 use tokio::time::{sleep, Duration};
+
+// Track whether the writer is running (across the app lifetime)
+static WRITER_RUNNING: AtomicBool = AtomicBool::new(false);
 
 // --- Existing commands ---
 
@@ -48,6 +54,49 @@ async fn test_influx_connection(config: InfluxConfig) -> Result<Value, String> {
 #[tauri::command]
 async fn query_influxdb(config: InfluxConfig) -> Result<Value, String> {
     query_influxdb_internal(&config).await
+}
+
+#[tauri::command]
+async fn write_influx_usage(config: InfluxConfig) -> Result<Value, String> {
+    let db_config = InfluxDbConfig {
+        url: config.url,
+        org: config.org,
+        bucket: config.bucket,
+        token: config.token,
+    };
+    let rec = UsageRecord {
+        provider: "dashboard-test".to_string(),
+        model: Some("test-write".to_string()),
+        tokens_used: 100,
+        cost_usd: 0.001,
+        ts: chrono::Utc::now().timestamp(),
+    };
+    write_usage_record(&db_config, rec)
+        .await
+        .map_err(|e| format!("Write failed: {}", e))?;
+    Ok(serde_json::json!({ "ok": true, "message": "Test record written to InfluxDB" }))
+}
+
+#[tauri::command]
+fn get_writer_status() -> Value {
+    serde_json::json!({ "running": WRITER_RUNNING.load(Ordering::SeqCst) })
+}
+
+#[tauri::command]
+async fn start_influx_writer(config: InfluxConfig) -> Result<Value, String> {
+    if WRITER_RUNNING.swap(true, Ordering::SeqCst) {
+        return Ok(serde_json::json!({ "ok": true, "message": "Writer already running" }));
+    }
+    let db_config = InfluxDbConfig {
+        url: config.url,
+        org: config.org,
+        bucket: config.bucket,
+        token: config.token,
+    };
+    tauri::async_runtime::spawn(async move {
+        start_writer(db_config).await;
+    });
+    Ok(serde_json::json!({ "ok": true, "message": "Writer started" }))
 }
 
 // --- Provider API commands ---
@@ -120,6 +169,9 @@ pub fn run() {
             get_usage_summary,
             test_influx_connection,
             query_influxdb,
+            write_influx_usage,
+            get_writer_status,
+            start_influx_writer,
             test_provider_keys,
             query_providers,
         ])

@@ -14,6 +14,9 @@ pub mod collector;
 #[cfg(feature = "server")]
 pub mod db;
 
+#[cfg(feature = "server")]
+pub use db::{InfluxDbConfig, start_writer, write_usage_record};
+
 #[cfg(all(test, feature = "server"))]
 mod tests;
 #[cfg(all(test, feature = "server"))]

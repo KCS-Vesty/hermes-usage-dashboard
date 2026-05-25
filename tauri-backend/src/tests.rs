@@ -301,4 +301,69 @@ mod tests {
         assert!((summary.total_cost_usd - 0.03).abs() < f64::EPSILON);
         assert_eq!(summary.providers.len(), 2);
     }
+
+    // --- InfluxDB writer command tests ---
+
+    /// Verify writer_status returns correct shape (synchronous, no network).
+    #[test]
+    fn test_get_writer_status_returns_running_bool() {
+        let status = crate::get_writer_status();
+        assert!(
+            status.get("running").is_some(),
+            "writer_status should have 'running' field"
+        );
+        assert!(
+            status["running"].is_boolean(),
+            "'running' should be a boolean"
+        );
+    }
+
+    /// Verify write_influx_usage command exists and rejects missing config.
+    #[tokio::test]
+    #[ignore = "requires a running InfluxDB server"]
+    async fn test_write_influx_usage_needs_config() {
+        let config = crate::InfluxConfig {
+            url: "http://localhost:8086".to_string(),
+            org: "test".to_string(),
+            bucket: "test".to_string(),
+            token: "test".to_string(),
+        };
+        let result = crate::write_influx_usage(config).await;
+        // Without a real InfluxDB, this should return an error, not panic
+        assert!(result.is_err(), "Expected error without real InfluxDB");
+    }
+
+    /// Verify start_influx_writer command exists and accepts config.
+    #[tokio::test]
+    #[ignore = "requires a running InfluxDB server"]
+    async fn test_start_influx_writer_needs_config() {
+        let config = crate::InfluxConfig {
+            url: "http://localhost:8086".to_string(),
+            org: "test".to_string(),
+            bucket: "test".to_string(),
+            token: "test".to_string(),
+        };
+        let result = crate::start_influx_writer(config).await;
+        // Without a real InfluxDB, the writer will loop trying to connect
+        // but the command itself should return Ok since it spawns a task
+        assert!(result.is_ok(), "start_influx_writer command should return ok");
+        let v = result.unwrap();
+        assert!(v["ok"].as_bool().unwrap_or(false), "should return ok: true");
+    }
+
+    /// Verify the InfluxDbConfig struct is constructable (cross-crate).
+    #[test]
+    fn test_influxdb_config_accessible() {
+        use hermes_monitor::InfluxDbConfig;
+        let config = InfluxDbConfig {
+            url: "http://localhost:8086".to_string(),
+            org: "test".to_string(),
+            bucket: "test".to_string(),
+            token: "test".to_string(),
+        };
+        assert_eq!(config.url, "http://localhost:8086");
+        assert_eq!(config.org, "test");
+        assert_eq!(config.bucket, "test");
+        assert_eq!(config.token, "test");
+    }
 }

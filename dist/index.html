@@ -206,6 +206,12 @@
                 </div>
                 <button class="test-btn" onclick="testInfluxConnection()">Test Connection</button>
                 <div class="test-result" id="influx-test-result"></div>
+                <div style="margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button class="test-btn" onclick="writeTestInfluxRecord()">✏️ Write Test Record</button>
+                    <button class="test-btn" id="btn-start-writer" onclick="toggleInfluxWriter()">▶ Start Writer</button>
+                </div>
+                <div class="test-result" id="influx-write-result"></div>
+                <div class="test-result" id="influx-writer-status"></div>
             </div>
 
             <div class="form-section">
@@ -526,6 +532,67 @@
             } catch (e) {
                 resultEl.textContent = 'Tauri not available — run the desktop app to test';
                 resultEl.className = 'test-result fail';
+            }
+        }
+
+        // --- InfluxDB writer controls ---
+        function getInfluxConfig() {
+            return {
+                url: document.getElementById('influx-url').value.trim(),
+                org: document.getElementById('influx-org').value.trim(),
+                bucket: document.getElementById('influx-bucket').value.trim(),
+                token: document.getElementById('influx-token').value.trim()
+            };
+        }
+
+        async function writeTestInfluxRecord() {
+            const resultEl = document.getElementById('influx-write-result');
+            resultEl.textContent = 'Writing...';
+            resultEl.className = 'test-result';
+            try {
+                const config = getInfluxConfig();
+                if (!config.token) { resultEl.textContent = 'Please enter an InfluxDB token first'; resultEl.className = 'test-result fail'; return; }
+                const res = await window.__TAURI__.invoke('write_influx_usage', config);
+                if (res.ok) { resultEl.textContent = 'Test record written successfully'; resultEl.className = 'test-result ok'; }
+                else { resultEl.textContent = res.message || 'Write failed'; resultEl.className = 'test-result fail'; }
+            } catch (e) {
+                resultEl.textContent = `Error: ${e.message || e}`;
+                resultEl.className = 'test-result fail';
+            }
+        }
+
+        async function toggleInfluxWriter() {
+            const btn = document.getElementById('btn-start-writer');
+            const statusEl = document.getElementById('influx-writer-status');
+
+            try {
+                // Check current status
+                const status = await window.__TAURI__.invoke('get_writer_status');
+                if (status.running) {
+                    statusEl.textContent = 'Writer is running — records are being flushed every 2s';
+                    statusEl.className = 'test-result ok';
+                    return;
+                }
+
+                // Start the writer
+                const config = getInfluxConfig();
+                if (!config.token) { statusEl.textContent = 'Please enter an InfluxDB token first'; statusEl.className = 'test-result fail'; return; }
+
+                btn.textContent = '⏳ Starting...';
+                const res = await window.__TAURI__.invoke('start_influx_writer', config);
+                if (res.ok) {
+                    btn.textContent = '✅ Writer Active';
+                    statusEl.textContent = 'Writer started — draining records to InfluxDB every 2s';
+                    statusEl.className = 'test-result ok';
+                } else {
+                    btn.textContent = '▶ Start Writer';
+                    statusEl.textContent = res.message || 'Failed to start';
+                    statusEl.className = 'test-result fail';
+                }
+            } catch (e) {
+                btn.textContent = '▶ Start Writer';
+                statusEl.textContent = `Error: ${e.message || e}`;
+                statusEl.className = 'test-result fail';
             }
         }
 
