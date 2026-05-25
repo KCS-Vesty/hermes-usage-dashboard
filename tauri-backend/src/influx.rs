@@ -21,7 +21,7 @@ pub async fn query_influxdb_internal(config: &InfluxConfig) -> Result<Value, Str
         r#"from(bucket: "{}")
         |> range(start: -24h)
         |> filter(fn: (r) => r._measurement == "usage")
-        |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+        |> pivot(rowKey:["_time","provider"], columnKey: ["_field"], valueColumn: "_value")
         |> group(columns: ["provider"])
         |> sum()"#,
         config.bucket
