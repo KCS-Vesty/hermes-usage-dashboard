@@ -141,6 +141,7 @@ mod tests {
     // --- InfluxDB command tests ---
 
     #[tokio::test]
+    #[ignore = "requires a running InfluxDB server"]
     async fn test_influx_connection_returns_ok_on_reachable() {
         let config = crate::InfluxConfig {
             url: "http://localhost:8086".to_string(),
@@ -181,6 +182,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires network access to provider APIs"]
     async fn test_provider_keys_with_invalid_key() {
         let mut keys = std::collections::HashMap::new();
         keys.insert("openrouter".to_string(), "invalid-key".to_string());

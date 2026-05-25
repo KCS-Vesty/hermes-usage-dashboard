@@ -255,6 +255,19 @@
     </div>
 
     <script>
+        // --- Tauri bridge (v2 static HTML compat) ---
+        // Tauri v2 injects __TAURI_INTERNALS__ into every webview, but NOT
+        // the __TAURI__ global — that only comes from @tauri-apps/api import.
+        // Bridge them so our code works without any bundler/npm.
+        if (window.__TAURI_INTERNALS__ && !window.__TAURI__) {
+            window.__TAURI__ = {
+                invoke: (cmd, args) => window.__TAURI_INTERNALS__.invoke(cmd, args),
+                event: window.__TAURI_INTERNALS__.event,
+            };
+        }
+        console.log('[Hermes] Tauri globals:', Object.keys(window).filter(k => k.startsWith('__TAURI')));
+        console.log('[Hermes] __TAURI__ available:', typeof window.__TAURI__?.invoke === 'function');
+
         // --- State ---
         let settings = {
             influx: { url: 'http://127.0.0.1:8086', org: 'hermes', bucket: 'hermes_usage', token: '' },
@@ -402,9 +415,10 @@
         }
 
         // --- Data fetching ---
+        // All invoke calls are try-catched. If window.__TAURI__ doesn't exist
+        // (browser mode), the catch handles it gracefully.
         async function fetchInfluxData() {
             if (!settings.influx.token) return null;
-            if (!window.__TAURI__) return null;
             try {
                 const result = await window.__TAURI__.invoke('query_influxdb', {
                     url: settings.influx.url,
@@ -423,7 +437,6 @@
             const keys = settings.providers;
             const hasAnyKey = Object.values(keys).some(k => k.trim());
             if (!hasAnyKey) return null;
-            if (!window.__TAURI__) return null;
             try {
                 const result = await window.__TAURI__.invoke('query_providers', { keys });
                 return typeof result === 'string' ? JSON.parse(result) : result;
@@ -437,37 +450,35 @@
             clearError();
             setStatus('Refreshing...', 'yellow');
 
-            if (window.__TAURI__) {
-                // Running inside Tauri — try real data sources
-                const [influx, providers] = await Promise.all([
+            let influx = null;
+            let providers = null;
+            let tauriMode = false;
+
+            try {
+                [influx, providers] = await Promise.all([
                     fetchInfluxData(),
                     fetchProviderData()
                 ]);
-                influxData = influx;
-                providerData = providers;
+                tauriMode = true;
+            } catch (e) {
+                console.log('Not in Tauri, using sample data');
+            }
 
-                // Determine which data to show based on primary source
-                let primary = null;
-                if (settings.primarySource === 'influxdb') {
-                    primary = influx || providers;
-                } else if (settings.primarySource === 'providers') {
-                    primary = providers || influx;
-                } else {
-                    primary = influx || providers;
-                }
+            influxData = influx;
+            providerData = providers;
 
-                if (primary) {
-                    renderDashboard(primary, 'influxdb-content');
-                    renderDashboard(providers || influx || { providers: [], total_tokens: 0, total_cost_usd: 0 }, 'providers-content');
-                    setStatus('Connected — live data', 'green');
-                } else {
-                    // No real data available — show empty states
-                    document.getElementById('influxdb-content').innerHTML = `<div class="empty-state"><div class="empty-state-icon">📊</div><h2>No InfluxDB Data</h2><p>${settings.influx.token ? 'Could not connect. Check your settings.' : 'Configure InfluxDB in Settings.'}</p></div>`;
-                    document.getElementById('providers-content').innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔌</div><h2>No Provider Data</h2><p>${Object.values(settings.providers).some(k=>k) ? 'Could not connect. Check your API keys.' : 'Configure provider API keys in Settings.'}</p></div>`;
-                    setStatus('No data sources available', 'yellow');
-                }
+            const hasRealData = influx || providers;
+
+            if (tauriMode && hasRealData) {
+                let primary = settings.primarySource === 'providers' ? (providers || influx) : (influx || providers);
+                renderDashboard(primary, 'influxdb-content');
+                renderDashboard(providers || influx || { providers: [], total_tokens: 0, total_cost_usd: 0 }, 'providers-content');
+                setStatus('Connected — live data', 'green');
+            } else if (tauriMode) {
+                document.getElementById('influxdb-content').innerHTML = `<div class="empty-state"><div class="empty-state-icon">📊</div><h2>No InfluxDB Data</h2><p>${settings.influx.token ? 'Could not connect. Check your settings.' : 'Configure InfluxDB in Settings.'}</p></div>`;
+                document.getElementById('providers-content').innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔌</div><h2>No Provider Data</h2><p>${Object.values(settings.providers).some(k=>k) ? 'Could not connect. Check your API keys.' : 'Configure provider API keys in Settings.'}</p></div>`;
+                setStatus('No data sources configured', 'yellow');
             } else {
-                // Browser mode — mock data
                 const mock = {
                     providers: [
                         { name: 'openrouter', tokens_used: 15000, cost_usd: 0.45 },
@@ -476,11 +487,11 @@
                         { name: 'opencode zen', tokens_used: 5000, cost_usd: 0.15 },
                         { name: 'opencode go', tokens_used: 3000, cost_usd: 0.09 }
                     ],
-                    total_tokens: 38000, total_cost_usd: 1.29
+                    total_tokens: 43000, total_cost_usd: 1.29
                 };
                 renderDashboard(mock, 'influxdb-content');
                 renderDashboard(mock, 'providers-content');
-                setStatus('Preview mode — sample data (open Tauri app for live data)', 'yellow');
+                setStatus('Preview mode — sample data', 'yellow');
             }
             renderComparison();
         }
@@ -502,11 +513,6 @@
         // --- Connection tests ---
         async function testInfluxConnection() {
             const resultEl = document.getElementById('influx-test-result');
-            if (!window.__TAURI__) {
-                resultEl.textContent = 'ℹ️ Open the Tauri app to test connections. Use ↻ Refresh to load mock data in browser.';
-                resultEl.className = 'test-result';
-                return;
-            }
             resultEl.textContent = 'Testing...';
             resultEl.className = 'test-result';
             try {
@@ -514,20 +520,18 @@
                 const org = document.getElementById('influx-org').value.trim();
                 const bucket = document.getElementById('influx-bucket').value.trim();
                 const token = document.getElementById('influx-token').value.trim();
-                if (!token) { resultEl.textContent = '⚠ Please enter an API token'; resultEl.className = 'test-result fail'; return; }
+                if (!token) { resultEl.textContent = 'Please enter an API token'; resultEl.className = 'test-result fail'; return; }
                 const res = await window.__TAURI__.invoke('test_influx_connection', { url, org, bucket, token });
-                if (res.ok) { resultEl.textContent = `✓ Connected (status ${res.status})`; resultEl.className = 'test-result ok'; }
-                else { resultEl.textContent = `✗ ${res.error || 'Connection failed'}`; resultEl.className = 'test-result fail'; }
-            } catch (e) { resultEl.textContent = `✗ ${e.message || e}`; resultEl.className = 'test-result fail'; }
+                if (res.ok) { resultEl.textContent = `Connected (status ${res.status})`; resultEl.className = 'test-result ok'; }
+                else { resultEl.textContent = res.error || 'Connection failed'; resultEl.className = 'test-result fail'; }
+            } catch (e) {
+                resultEl.textContent = 'Tauri not available — run the desktop app to test';
+                resultEl.className = 'test-result fail';
+            }
         }
 
         async function testProviderConnections() {
             const resultEl = document.getElementById('providers-test-result');
-            if (!window.__TAURI__) {
-                resultEl.textContent = 'ℹ️ Open the Tauri app to test connections. Use ↻ Refresh to load mock data in browser.';
-                resultEl.className = 'test-result';
-                return;
-            }
             resultEl.textContent = 'Testing...';
             resultEl.className = 'test-result';
             try {
@@ -536,14 +540,17 @@
                     const val = document.getElementById('key-' + key)?.value.trim();
                     if (val) keys[key] = val;
                 }
-                if (Object.keys(keys).length === 0) { resultEl.textContent = '⚠ Please enter at least one API key'; resultEl.className = 'test-result fail'; return; }
+                if (Object.keys(keys).length === 0) { resultEl.textContent = 'Please enter at least one API key'; resultEl.className = 'test-result fail'; return; }
                 const res = await window.__TAURI__.invoke('test_provider_keys', { keys });
                 const okList = res.ok || [];
                 const failList = res.failed || [];
-                if (okList.length > 0 && failList.length === 0) { resultEl.textContent = `✓ All ${okList.length} key(s) valid: ${okList.join(', ')}`; resultEl.className = 'test-result ok'; }
-                else if (okList.length > 0) { resultEl.textContent = `⚠ ${okList.length} valid (${okList.join(', ')}), ${failList.length} failed: ${failList.map(f => f.name || f.error || JSON.stringify(f)).join(', ')}`; resultEl.className = 'test-result fail'; }
-                else { resultEl.textContent = `✗ All keys failed: ${failList.map(f => f.name || f.error || JSON.stringify(f)).join(', ')}`; resultEl.className = 'test-result fail'; }
-            } catch (e) { resultEl.textContent = `✗ ${e.message || e}`; resultEl.className = 'test-result fail'; }
+                if (okList.length > 0 && failList.length === 0) { resultEl.textContent = `All ${okList.length} key(s) valid: ${okList.join(', ')}`; resultEl.className = 'test-result ok'; }
+                else if (okList.length > 0) { resultEl.textContent = `${okList.length} valid (${okList.join(', ')}), ${failList.length} failed: ${failList.map(f => f.name || f.error || JSON.stringify(f)).join(', ')}`; resultEl.className = 'test-result fail'; }
+                else { resultEl.textContent = `All keys failed: ${failList.map(f => f.name || f.error || JSON.stringify(f)).join(', ')}`; resultEl.className = 'test-result fail'; }
+            } catch (e) {
+                resultEl.textContent = 'Tauri not available — run the desktop app to test';
+                resultEl.className = 'test-result fail';
+            }
         }
 
         function escapeHtml(str) {
