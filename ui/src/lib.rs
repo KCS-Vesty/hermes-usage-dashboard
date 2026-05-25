@@ -16,7 +16,7 @@ fn mock_data() -> Option<UsageSummary> {
             ProviderUsage { name: "opencode zen".into(), tokens_used: 5_000, cost_usd: 0.15 },
             ProviderUsage { name: "opencode go".into(), tokens_used: 3_000, cost_usd: 0.09 },
         ],
-        total_tokens: 38_000,
+        total_tokens: 43_000,
         total_cost_usd: 1.29,
     })
 }
@@ -83,7 +83,7 @@ mod tests {
     fn test_format_number() {
         assert_eq!(format_number(0), "0");
         assert_eq!(format_number(1_000), "1,000");
-        assert_eq!(format_number(38_000), "38,000");
+        assert_eq!(format_number(43_000), "43,000");
         assert_eq!(format_number(1_234_567), "1,234,567");
     }
 
@@ -108,7 +108,7 @@ mod tests {
     fn test_mock_data() {
         let data = mock_data().unwrap();
         assert_eq!(data.providers.len(), 5);
-        assert_eq!(data.total_tokens, 38_000);
+        assert_eq!(data.total_tokens, 43_000);
         assert!((data.total_cost_usd - 1.29).abs() < f64::EPSILON);
     }
 
@@ -116,7 +116,7 @@ mod tests {
     fn test_get_usage_summary_returns_data() {
         let data = get_usage_summary().unwrap();
         assert_eq!(data.providers.len(), 5);
-        assert_eq!(data.total_tokens, 38_000);
+        assert_eq!(data.total_tokens, 43_000);
     }
 
     #[test]

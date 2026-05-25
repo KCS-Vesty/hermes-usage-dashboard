@@ -71,7 +71,7 @@ pub fn build_usage_summary() -> UsageSummary {
                 cost_usd: 0.09,
             },
         ],
-        total_tokens: 38_000,
+        total_tokens: 43_000,
         total_cost_usd: 1.29,
     }
 }
